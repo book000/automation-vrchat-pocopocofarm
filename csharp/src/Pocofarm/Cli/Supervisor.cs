@@ -1,3 +1,4 @@
+using System.Text.Json;
 using Pocofarm.Core;
 using Pocofarm.Farm;
 using Pocofarm.Ocr;
@@ -36,8 +37,10 @@ public static class Supervisor
             while (!p.WaitForExit(1000))
             {
                 if (cts.IsCancellationRequested) { p.Kill(true); return 0; }
-                // 設定は毎回読み直す(update_source をダッシュボードから変えても再起動なしで効く)
-                var live = Config.Load(paths.ConfigFile);
+                // 設定は毎回読み直す(config.json の update_source を編集しても再起動なしで効く。手編集の途中で壊れていても落ちない)
+                var live = cfg;
+                try { live = Config.Load(paths.ConfigFile); }
+                catch (Exception e) when (e is JsonException or IOException) { Log.Warn($"config.json を読めないため、直前の設定で続けます: {e.Message}"); }
                 double now = Environment.TickCount64 / 1000.0;
                 if (live.ExeCleanupInterval > 0 && now - lastExeCleanup >= live.ExeCleanupInterval)
                 {

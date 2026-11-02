@@ -42,7 +42,11 @@ public sealed class EventLog
         int max = 0;
         if (!File.Exists(path)) return 0;
         foreach (var line in ReadLines(path))
-            if (JsonNode.Parse(line) is JsonObject o && o.Num("attempt") is { } a) max = Math.Max(max, (int)a);
+        {
+            // 途中書き込みで壊れた行や空行は飛ばす(Read と同じ扱い。ここで落とすと起動のたびに失敗する)
+            try { if (JsonNode.Parse(line) is JsonObject o && o.Num("attempt") is { } a) max = Math.Max(max, (int)a); }
+            catch (JsonException) { }
+        }
         return max;
     }
 

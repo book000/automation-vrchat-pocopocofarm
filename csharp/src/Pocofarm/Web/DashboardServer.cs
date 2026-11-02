@@ -40,6 +40,18 @@ public static class DashboardServer
         Directory.CreateDirectory(paths.Data);
 
         app.Use(async (ctx, next) => { ctx.Response.Headers.CacheControl = "no-store"; await next(); });
+        // 全リクエスト共通: LAN 内のアドレスからのみ受け付ける。Host は IP かローカル名だけ(DNS リバインディング対策)。
+        // 書き込み系は別オリジンのページからの送信(CSRF)を拒否する。Origin が無い(curl など)場合は通す
+        app.Use(async (ctx, next) =>
+        {
+            if (!Private(ctx)) { ctx.Response.StatusCode = 403; return; }
+            if (!HostAllowed(ctx.Request.Host.Host)) { ctx.Response.StatusCode = 421; return; }
+            if (!HttpMethods.IsGet(ctx.Request.Method) && !HttpMethods.IsHead(ctx.Request.Method)
+                && ctx.Request.Headers.Origin.ToString() is { Length: > 0 } origin
+                && !(Uri.TryCreate(origin, UriKind.Absolute, out var o) && string.Equals(o.Authority, ctx.Request.Host.ToString(), StringComparison.OrdinalIgnoreCase)))
+            { ctx.Response.StatusCode = 403; return; }
+            await next();
+        });
         app.MapGet("/", () => Results.Bytes(page, "text/html; charset=utf-8"));
         app.MapGet("/index.html", () => Results.Bytes(page, "text/html; charset=utf-8"));
         app.MapGet("/api/state", () => JsonResult(dash.BuildState()));
@@ -129,6 +141,12 @@ public static class DashboardServer
         await app.StartAsync();
         Log.Info($"ダッシュボード起動: http://{host}:{port}/");
         return app;
+    }
+
+    static bool HostAllowed(string host)
+    {
+        host = host.Trim('[', ']');
+        return IPAddress.TryParse(host, out _) || host.Equals("localhost", StringComparison.OrdinalIgnoreCase) || host.Equals(Environment.MachineName, StringComparison.OrdinalIgnoreCase);
     }
 
     static bool Private(HttpContext ctx)

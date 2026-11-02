@@ -4,7 +4,7 @@ namespace Pocofarm.Platform;
 
 /// <summary>
 /// exe の自動入れ替え。常駐(all)が、exe と同じ場所に置かれた pocofarm.new.exe(または update_source の新しい exe)を見つけたら、
-/// 釣りプロセスを止め、起動中の exe を pocofarm.old.exe へ改名(Windows は実行中でも改名できる)して差し替え、新しい常駐を起動する。
+/// 釣りプロセスを止め、起動中の exe を pocofarm.exe.old へ改名(Windows は実行中でも改名できる)して差し替え、新しい常駐を起動する。
 /// </summary>
 public static class SelfUpdate
 {

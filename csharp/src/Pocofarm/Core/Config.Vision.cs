@@ -3,7 +3,7 @@ namespace Pocofarm.Core;
 /// <summary>ウキ・沈みの検出に関する設定。</summary>
 public sealed partial class Config
 {
-    [Desc("ウキを探す範囲 [左, 上, 幅, 高さ](画面比率)", true)] public double[] BobberRoi { get; set; } = [0.05, 0.08, 0.90, 0.75];
+    [Desc("ウキを探す範囲 [左, 上, 右, 下](画面比率)", true)] public double[] BobberRoi { get; set; } = [0.05, 0.08, 0.90, 0.75];
     [Desc("ウキ検出から除外する範囲(画面比率の矩形の配列)", true)] public double[][] ExcludeRois { get; set; } = [[0.77, 0.0, 1.0, 0.36], [0.0, 0.0, 0.17, 0.12]];
 
     [Desc("ウキの赤: 最小の彩度(0〜255)")] public int BobberRedMinSaturation { get; set; } = 100;

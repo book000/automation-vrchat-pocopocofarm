@@ -38,15 +38,15 @@ curl -X POST http://<host>:10000/api/config -d '{"farm_shot_interval":900,"pecks
 常駐(`pocofarm all`)は、exe と同じ場所に `pocofarm.new.exe` が置かれると、釣りプロセスを止めて自分を入れ替え(旧版は `pocofarm.exe.old`。起動時と `exe_cleanup_interval` ごとに、残った `*.old`・`*.failed`・放置された `.tmp` を自動で削除する)、同じ引数で新しい常駐を起動する。Windows は実行中の exe を改名できるので、手で止める必要はない。前回が一時停止中なら一時停止のまま起動する。
 
 - 手動: 新しい exe を `pocofarm.new.exe` という名前で置く(コピー完了後に名前を付けるなら、`.tmp` で置いてから改名)。
-- 自動: `config.json` の `update_source` に新しい exe のパス(UNC 可)を指定すると、`update_check_seconds` ごとに確認し、更新日時が新しければ取り込んで入れ替える。
+- 自動: `config.json` の `update_source` に新しい exe のパス(UNC 可)を指定すると(config.json を直接編集する。セキュリティ上、ダッシュボードからは変更できない)、`update_check_seconds` ごとに確認し、更新日時が新しければ取り込んで入れ替える。
 
 ## 構成
 
 | 場所 | 役割 |
 |---|---|
 | `src/Pocofarm/Program.cs`, `Cli/` | エントリポイントとサブコマンド(`Supervisor`=常駐、`RunCommand`=本体、`Diagnostics`=点検、`Maintenance`=掃除・設定) |
-| `Core/` | 画面に依存しない部分: `Config*.cs`(設定。領域ごとに分割)、`Layout`(解像度ごとの範囲)、`Toast`(分類)、`Hud`、`Stats`、`EventLog`、`Status`、`AtomicFile`、`Paths`(data 以下の場所) |
-| `Vision/` | `BobberDetector`(赤い棒+白い玉の検出)、`DipDetector`(静止と沈みの判定)、`BobberParams`(検出・判定のしきい値。設定から作る)、`ViewMotion`(視点移動) |
+| `Core/` | 画面に依存しない部分: `Config*.cs`(設定。領域ごとに分割)、`Layout`(解像度ごとの範囲)、`Toast`(分類)、`Stats`、`EventLog`、`Status`、`AtomicFile`、`Paths`(data 以下の場所) |
+| `Vision/` | `BobberDetector`(赤い棒+白い玉の検出)、`DipDetector`(静止と沈みの判定)、`BobberParams`(検出・判定のしきい値。設定から作る)、`ViewMotion`(視点移動)、`Hud`(HUD の範囲)、`IconFinder`(UI アイコンの形検出) |
 | `Fishing/` | `Fisher`(状態機械)と、そこから切り出した協調クラス: `AutoTuner`(投げ待ち・沈み回数・当たり待ちの自動調整)、`AttemptRecorder`(結果の確定記録)、`ToastReader`(トースト OCR)、`HudMonitor`(レベル・経験値)、`ControlChannel`(停止キー・control.json・リセット)、`ClickSender`、`Auditor`、`NekoCollector`、`LoopProfiler`、`EvidenceStore` |
 | `Farm/` | 定点写真(`FarmShots`、`SpoutCamera`)と畑の解析(`FarmGrid`) |
 | `Platform/` | `WinApi`(SendInput でカーソルを動かさないクリック、前面化、キー監視)、`WgcCapture`、`Imaging`、`Notify`、`Firewall`、`SelfUpdate` |
@@ -80,6 +80,6 @@ curl -X POST http://<host>:10000/api/config -d '{"farm_shot_interval":900,"pecks
 
 
 ## ファーム定点写真(Spout)
-`farm_shot_interval`(既定 600 秒、0 で無効)ごとに、釣れた直後(cooldown)に釣りを約 7 秒止め、Esc → カメラ → Stream Camera を画面確認つきで操作してカメラを開き、OSC で `Streaming` を入れて Spout の共有テクスチャを自分で読み取って JPEG にし、`Streaming` を切ってカメラを閉じて再開する。写真は直近 1 枚だけ `data/farm/` に残る。VRChat の OSC を有効にしておくこと。
+`farm_shot_interval`(既定 600 秒、0 で無効)ごとに、釣れた直後(cooldown)に釣りを約 7 秒止め、Esc → カメラ → Stream Camera を画面確認つきで操作してカメラを開き、OSC で `Streaming` を入れて Spout の共有テクスチャを自分で読み取って JPEG にし、`Streaming` を切ってカメラを閉じて再開する。写真は直近 `farm_keep_shots` 枚(既定 12)だけ `data/farm/` に残る。VRChat の OSC を有効にしておくこと。
 
 実測した仕様: `/usercamera/*` の OSC はカメラが開いている間だけ効く。Spout にファームが映るのはカメラが開いている間だけ。配信中は VRChat の HUD(レベル・釣果)が消えるので、撮影の間以外は配信しない。想定外の画面なら何もクリックせず中止する。ダッシュボードの `POST /api/farm/shoot` で即時撮影もできる。

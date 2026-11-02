@@ -12,7 +12,7 @@ public interface IFishingControl
     void RequestPause(bool pause);
 }
 
-/// <summary>Spout 配信中、一定間隔でファームの様子を JPEG に保存する(直近 1 枚だけ残す)。</summary>
+/// <summary>Spout 配信中、一定間隔でファームの様子を JPEG に保存する(直近 farm_keep_shots 枚だけ残す)。</summary>
 public sealed partial class FarmShots(Paths paths, Config cfg, IFishingControl dash)
 {
     [GeneratedRegex(@"^farm_\d{8}_\d{6}\.jpg$")]

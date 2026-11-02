@@ -8,7 +8,7 @@ using Pocofarm.Vision;
 namespace Pocofarm.Fishing;
 
 /// <summary>
-/// 画面左上の HUD(レベルと経験値バー)を読む。レベルは OCR、経験値は色で測る。
+/// 画面下部の HUD(レベルと経験値バー)を読む。レベルは OCR、経験値は色で測る。
 /// レベルが読めない状態が続いたら「Lv」の文字位置から領域を割り出し直し、画面サイズごとに data/ へ保存する。
 /// </summary>
 public sealed class HudMonitor

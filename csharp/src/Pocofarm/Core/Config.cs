@@ -61,6 +61,7 @@ public sealed partial class Config
         {
             var p = Props.FirstOrDefault(x => KeyOf(x) == key);
             if (p is null) return $"未知のキーです: {key}";
+            if (key == "update_source") return "update_source は config.json を直接編集してください(ここからは変更できません。任意の exe を実行させる経路になるため)";
             object? v;
             try { v = node is null ? p.GetValue(def) : JsonSerializer.Deserialize(node.ToJsonString(), p.PropertyType, Json); }
             catch (JsonException) { return $"{key}: 値の形式が違います"; }

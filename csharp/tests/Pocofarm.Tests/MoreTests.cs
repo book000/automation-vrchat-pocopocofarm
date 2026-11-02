@@ -190,4 +190,26 @@ public class MoreTests : IDisposable
         Assert.NotNull(c.Apply(JsonNode.Parse("{\"cast_timeout\":\"x\"}")!.AsObject(), []));
         Assert.Equal(8.0, c.CastTimeout);   // 不正な更新は何も変えない
     }
+
+    [Fact]
+    public void ConfigApplyRejectsUpdateSource()
+    {
+        var c = new Config();
+        Assert.NotNull(c.Apply(JsonNode.Parse("{\"update_source\":\"//host/share/x.exe\"}")!.AsObject(), []));
+        Assert.Equal("", c.UpdateSource);
+    }
+
+    [Fact]
+    public void EventLog_SkipsCorruptLinesWhenResumingSequence()
+    {
+        var dir = Path.Combine(Path.GetTempPath(), "pocofarm-test-" + Guid.NewGuid().ToString("N"));
+        try
+        {
+            Directory.CreateDirectory(dir);
+            var path = Path.Combine(dir, "events.jsonl");
+            File.WriteAllText(path, "{\"type\":\"attempt\",\"attempt\":7}\n{\"type\":\"att\n\n");   // 途中で切れた行と空行
+            Assert.Equal(8, new EventLog(path).NextAttempt());
+        }
+        finally { if (Directory.Exists(dir)) Directory.Delete(dir, true); }
+    }
 }
