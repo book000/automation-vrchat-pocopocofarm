@@ -1,0 +1,145 @@
+using System.Globalization;
+using System.Text.Encodings.Web;
+using System.Text.Json;
+using System.Text.Json.Nodes;
+
+namespace Pocofarm.Core;
+
+/// <summary>釣果・失敗の記録(events.jsonl)。1 行 1 イベントの JSONL。</summary>
+public sealed class EventLog
+{
+    public static readonly string[] Outcomes = ["caught", "early", "escaped", "unknown", "no_bite_reset", "cast_failed", "missed_bite"];
+
+    public static readonly Dictionary<string, string> OutcomeJa = new()
+    {
+        ["caught"] = "釣果", ["early"] = "早すぎ", ["escaped"] = "逃げられた", ["unknown"] = "結果不明",
+        ["no_bite_reset"] = "当たりなし引き直し", ["cast_failed"] = "投げ失敗", ["missed_bite"] = "当たり見逃し",
+    };
+
+    static readonly JsonSerializerOptions Opt = new() { Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping };
+
+    readonly object gate = new();
+    readonly string path;
+    int seq;
+
+    /// <summary>このセッションで書いた試行イベント(集計用)。毎回ファイル全体を読み直さずに済ませる。</summary>
+    public List<JsonObject> SessionAttempts { get; } = [];
+
+    /// <summary>このセッションの開始時刻(epoch 秒)。リセットで更新される。</summary>
+    public double SessionStart { get; private set; } = Now();
+
+    public EventLog(string path)
+    {
+        this.path = path;
+        Directory.CreateDirectory(Path.GetDirectoryName(path)!);
+        seq = LastSeq();
+    }
+
+    public static double Now() => DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() / 1000.0;
+
+    int LastSeq()
+    {
+        int max = 0;
+        if (!File.Exists(path)) return 0;
+        foreach (var line in ReadLines(path))
+            if (JsonNode.Parse(line) is JsonObject o && o.Num("attempt") is { } a) max = Math.Max(max, (int)a);
+        return max;
+    }
+
+    /// <summary>書き込み中の相手がいてもファイルを共有読みで列挙する。壊れた行は呼び出し側で飛ばす。</summary>
+    static IEnumerable<string> ReadLines(string p)
+    {
+        using var fs = new FileStream(p, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete);
+        using var sr = new StreamReader(fs);
+        while (sr.ReadLine() is { } line) yield return line;
+    }
+
+    /// <summary>試行番号を採番する(再起動後も連番を維持)。</summary>
+    public int NextAttempt() { lock (gate) return ++seq; }
+
+    /// <summary>現在の記録を data/archive に退避して空から始める。退避先を返す(記録が無ければ null)。</summary>
+    public string? Reset()
+    {
+        lock (gate)
+        {
+            string? dest = null;
+            if (File.Exists(path) && new FileInfo(path).Length > 0)
+            {
+                var dir = Path.Combine(Path.GetDirectoryName(path)!, "archive");
+                Directory.CreateDirectory(dir);
+                dest = Path.Combine(dir, $"events_{DateTime.Now:yyyyMMdd_HHmmss}.jsonl");
+                for (int i = 0; i < 10; i++)      // 読み込み中だと Windows では置換に失敗する
+                {
+                    try { File.Move(path, dest, true); break; }
+                    catch (IOException) { Thread.Sleep(200); }
+                }
+            }
+            seq = 0;
+            SessionStart = Now();
+            lock (SessionAttempts) SessionAttempts.Clear();
+            return dest;
+        }
+    }
+
+    /// <summary>イベントを追記する。</summary>
+    public void Write(string type, params (string Key, object? Value)[] fields) => Write(type, fields.Select(f => KeyValuePair.Create(f.Key, f.Value)));
+
+    /// <summary>イベントを追記する(項目を辞書で渡す版)。</summary>
+    public void Write(string type, IEnumerable<KeyValuePair<string, object?>> fields)
+    {
+        var rec = new Dictionary<string, object?>
+        {
+            ["ts"] = DateTimeOffset.Now.ToString("yyyy-MM-dd'T'HH:mm:ss.fffzzz", CultureInfo.InvariantCulture),
+            ["type"] = type,
+        };
+        foreach (var (k, v) in fields) rec[k] = v;
+        var line = JsonSerializer.Serialize(rec, Opt);
+        lock (gate) File.AppendAllText(path, line + "\n");
+        if (type == "attempt" && JsonNode.Parse(line) is JsonObject o) lock (SessionAttempts) SessionAttempts.Add(o);
+    }
+
+    /// <summary>イベントを読み出す。壊れた行は飛ばす。since 以降(epoch 秒)だけに絞れる。</summary>
+    public static List<JsonObject> Read(string path, double? since = null)
+    {
+        var list = new List<JsonObject>();
+        if (!File.Exists(path)) return list;
+        foreach (var line in ReadLines(path))
+        {
+            JsonObject? o;
+            try { o = JsonNode.Parse(line) as JsonObject; } catch (JsonException) { continue; }
+            if (o is null) continue;
+            if (since is { } s && (Timestamp(o) is not { } t || t < s)) continue;
+            list.Add(o);
+        }
+        return list;
+    }
+
+    /// <summary>イベントの ts を epoch 秒にする。</summary>
+    public static double? Timestamp(JsonObject o) =>
+        DateTimeOffset.TryParse(o.Str("ts"), CultureInfo.InvariantCulture, DateTimeStyles.None, out var t) ? t.ToUnixTimeMilliseconds() / 1000.0 : null;
+
+    /// <summary>このセッションの集計。</summary>
+    public Dictionary<string, object?> SummarizeSession() { lock (SessionAttempts) return Summarize(SessionAttempts.ToList()); }
+
+    /// <summary>試行イベントから成功率・魚種別・経験値などを集計する。</summary>
+    public static Dictionary<string, object?> Summarize(IEnumerable<JsonObject> events)
+    {
+        var attempts = events.Where(e => e.Str("type") == "attempt").ToList();
+        var counts = attempts.GroupBy(e => e.Str("outcome")).ToDictionary(g => g.Key, g => g.Count());
+        int C(string k) => counts.GetValueOrDefault(k);
+        var caughtEv = attempts.Where(e => e.Str("outcome") == "caught").ToList();
+        // 確認クリックは釣りの成否ではなく状態確認なので、成功率の母数から外す
+        int total = attempts.Count - C("no_bite_reset"), caught = C("caught");
+        return new()
+        {
+            ["attempts"] = total,
+            ["all_events"] = attempts.Count,
+            ["caught"] = caught,
+            ["success_rate"] = total > 0 ? Math.Round(caught * 100.0 / total, 1) : null,
+            ["outcomes"] = Outcomes.ToDictionary(k => k, C),
+            ["fish"] = caughtEv.GroupBy(e => e.Str("fish") is { Length: > 0 } f ? f : "不明").OrderByDescending(g => g.Count())
+                .ToDictionary(g => g.Key, g => g.Count()),
+            ["exp"] = (int)caughtEv.Sum(e => e.Num("exp") ?? 0),
+        };
+    }
+}

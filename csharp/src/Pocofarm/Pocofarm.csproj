@@ -1,0 +1,42 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0-windows10.0.22621.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <RootNamespace>Pocofarm</RootNamespace>
+    <AssemblyName>pocofarm</AssemblyName>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <InvariantGlobalization>true</InvariantGlobalization>
+    <SatelliteResourceLanguages>en</SatelliteResourceLanguages>
+    <!-- 単一 exe 配布は dotnet publish -c Release -r win-x64 で作る(ネイティブ DLL は初回起動時に展開) -->
+    <PublishSingleFile>true</PublishSingleFile>
+    <IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
+    <EnableCompressionInSingleFile>true</EnableCompressionInSingleFile>
+    <PublishTrimmed>false</PublishTrimmed>
+    <!-- 画素ループは最初から最適化コンパイルする(段階的 JIT だと立ち上がりが遅く CPU を食う) -->
+    <TieredPGO>false</TieredPGO>
+    <TieredCompilationQuickJitForLoops>false</TieredCompilationQuickJitForLoops>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- トースト切り出し(約 0.8MB)を毎 0.12 秒確保するため、LOH だと世代 2 GC が数秒おきに走る。閾値を上げて通常の世代に載せる -->
+    <RuntimeHostConfigurationOption Include="System.GC.LOHThreshold" Value="4000000" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <EmbeddedResource Include="Models/*.onnx" LogicalName="models.%(Filename)%(Extension)" />
+    <EmbeddedResource Include="Models/ui_*.png" LogicalName="models.%(Filename)%(Extension)" />
+    <EmbeddedResource Include="Web/Static/index.html" LogicalName="web.index.html" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="System.Drawing.Common" Version="10.*" />
+    <PackageReference Include="Vortice.Direct3D11" Version="3.*" />
+    <PackageReference Include="Vortice.DXGI" Version="3.*" />
+    <PackageReference Include="Microsoft.ML.OnnxRuntime" Version="1.*" />
+  </ItemGroup>
+
+</Project>

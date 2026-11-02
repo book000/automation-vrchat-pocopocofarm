@@ -1,0 +1,553 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>ぽこぽこファーム 釣り監視</title>
+<style>
+:root{
+  --bg:#0f1419;--panel:#171e26;--panel2:#1d2630;--line:#2a3643;--text:#e6edf3;--mute:#8b9bab;
+  --ok:#3fb950;--warn:#d29922;--bad:#f85149;--info:#58a6ff;--accent:#2ea8a0;
+}
+@media (prefers-color-scheme:light){
+  :root{--bg:#f3f5f8;--panel:#fff;--panel2:#f0f3f6;--line:#d8dee4;--text:#1f2328;--mute:#59636e;}
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font:14px/1.5 system-ui,"Yu Gothic UI","Meiryo",sans-serif}
+header{display:flex;align-items:center;gap:14px;flex-wrap:wrap;padding:12px 18px;border-bottom:1px solid var(--line);background:var(--panel);position:sticky;top:0;z-index:5}
+h1{font-size:16px;margin:0;font-weight:700}
+.badge{padding:3px 12px;border-radius:99px;font-weight:700;font-size:13px;background:var(--panel2);border:1px solid var(--line)}
+.badge.run{color:var(--ok);border-color:var(--ok)} .badge.stop{color:var(--bad);border-color:var(--bad)} .badge.wait{color:var(--warn);border-color:var(--warn)}
+header .sp{flex:1} header small{color:var(--mute)}
+main{display:grid;gap:14px;padding:14px 18px;grid-template-columns:repeat(12,1fr);max-width:1700px;margin:0 auto}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:12px 14px;min-width:0}
+.card h2{font-size:12px;margin:0 0 8px;color:var(--mute);letter-spacing:.04em;text-transform:uppercase}
+.kpis{grid-column:1/-1;display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px}
+.kpi .v{font-size:28px;font-weight:700;line-height:1.1} .kpi .s{color:var(--mute);font-size:12px}
+.live{grid-column:span 7} .side{grid-column:span 5;display:flex;flex-direction:column;gap:14px}
+.wide{grid-column:span 7} .half{grid-column:span 5} .full{grid-column:1/-1}
+@media (max-width:1100px){.live,.side,.wide,.half{grid-column:1/-1}}
+.live img{width:100%;border-radius:8px;display:block;background:#000}
+.fmbody{display:flex;gap:14px;align-items:flex-start;flex-wrap:wrap}
+.fmpic{position:relative;flex:1 1 56%;min-width:0;max-width:760px}
+.fmpic img{width:auto;max-width:100%;max-height:58vh;display:block;border-radius:8px}
+.fmpic canvas{position:absolute;left:0;top:0;pointer-events:none}
+.fmctl{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-bottom:10px}
+.seg{display:inline-flex}.seg button{border-radius:0;padding:3px 14px;margin-left:-1px}.seg button:first-child{border-radius:6px 0 0 6px;margin-left:0}.seg button:last-child{border-radius:0 6px 6px 0}
+.seg button.on{background:var(--accent);border-color:var(--accent);color:#fff}
+#fmmark.on{background:var(--accent);border-color:var(--accent);color:#fff}
+.fmpic.tog{cursor:ew-resize;touch-action:pan-y;user-select:none}
+#fmimg0{position:absolute;left:0;top:0;pointer-events:none}
+#fmlive{position:absolute;left:0;top:0;width:100%;height:100%;object-fit:contain;background:#000;z-index:5}
+#fmlive[hidden],#fmlivelb[hidden]{display:none}
+#fmlivelb{position:absolute;left:8px;top:8px;z-index:6;background:rgba(229,57,53,.92);color:#fff;font-size:12px;font-weight:700;padding:2px 8px;border-radius:10px}
+#fmdiv{position:absolute;top:0;bottom:0;width:0;pointer-events:none}
+#fmdiv i{position:absolute;top:0;bottom:0;left:-1px;width:2px;background:#fff;box-shadow:0 0 5px rgba(0,0,0,.7)}
+#fmdiv i::after{content:"";position:absolute;top:50%;left:50%;width:28px;height:28px;margin:-14px 0 0 -14px;border-radius:50%;background:#fff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 28 28'%3E%3Cpath d='M5 14l6-5v10zM23 14l-6-5v10z' fill='%23222'/%3E%3C/svg%3E") center/100% 100% no-repeat;box-shadow:0 1px 6px rgba(0,0,0,.6)}
+.fmlb{position:absolute;top:8px;padding:1px 9px;border-radius:99px;background:rgba(0,0,0,.6);color:#fff;font-size:12px;pointer-events:none}.fmlb.l{left:8px}.fmlb.r{right:8px}
+.fmrow{display:flex;gap:8px;align-items:center;margin-bottom:6px}.fmrow em{font-style:normal;font-size:12px;color:var(--mute);min-width:2.2em}
+.fmleg{display:flex;flex-wrap:wrap;gap:4px 12px;font-size:11px;color:var(--mute);margin-top:8px}.fmleg i{display:inline-block;width:9px;height:9px;border-radius:2px;margin-right:4px}
+.fmtxt{flex:1 1 300px;min-width:0}
+#fmsched{margin-bottom:10px}#fmsched .big{font-size:14px;font-weight:700;font-variant-numeric:tabular-nums}#fmsched .sub{font-size:11px;color:var(--mute);margin-top:2px;font-variant-numeric:tabular-nums}
+@media (max-width:899px){.fmpic{flex-basis:100%;max-width:none}.fmpic img{max-height:36vh}}
+.fmsum{display:flex;flex-wrap:wrap;gap:6px}
+.fmsum span{padding:2px 10px;border-radius:99px;border:1px solid var(--line);background:var(--panel2);font-size:13px;font-weight:700;white-space:nowrap}
+.fmplots{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px;margin-top:8px}
+.fmplots div{padding:4px 8px;border-radius:8px;border:1px solid var(--line);background:var(--panel2);font-size:12px;line-height:1.35;min-width:0}
+.fmplots div.bad{border-color:#e53935}
+.fmplots b{display:block;font-size:12px}
+.fmplots .cells{display:block;color:#e53935;font-weight:700;word-break:keep-all}.fmplots .wc{display:block;color:var(--mute);font-size:11px}.fmplots .ok{display:block;color:#43a047;font-weight:700}
+.last{font-size:20px;font-weight:700} .mute{color:var(--mute)}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th,td{padding:5px 8px;text-align:left;border-bottom:1px solid var(--line);white-space:nowrap}
+th{color:var(--mute);font-weight:600;position:sticky;top:0;background:var(--panel)}
+td.ocr{white-space:normal;color:var(--mute);max-width:360px;overflow:hidden;text-overflow:ellipsis}
+.scroll{max-height:340px;overflow:auto}
+.chip{display:inline-block;padding:1px 9px;border-radius:99px;font-size:12px;font-weight:700;border:1px solid}
+.o-caught{color:var(--ok);border-color:var(--ok)} .o-early,.o-no_bite_reset{color:var(--warn);border-color:var(--warn)}
+.o-escaped,.o-unknown,.o-cast_failed,.o-missed_bite{color:var(--bad);border-color:var(--bad)}
+.bars div.row{display:grid;grid-template-columns:110px 1fr 46px;gap:8px;align-items:center;margin:4px 0}
+.bar{height:12px;background:var(--panel2);border-radius:6px;overflow:hidden} .bar i{display:block;height:100%;background:var(--accent)}
+pre{margin:0;font:12px/1.5 ui-monospace,Consolas,monospace;white-space:pre-wrap;word-break:break-all;max-height:340px;overflow:auto}
+.gal{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:10px}
+.gal figure{margin:0;background:var(--panel2);border-radius:8px;overflow:hidden;cursor:pointer;border:1px solid var(--line)}
+.gal img{width:100%;display:block;aspect-ratio:16/9;object-fit:cover}
+.gal figcaption{font-size:11px;padding:4px 6px;color:var(--mute);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+input{background:var(--panel2);border:1px solid var(--line);color:var(--text);border-radius:6px;padding:5px 9px}
+#modal{position:fixed;inset:0;background:rgba(0,0,0,.85);display:none;align-items:center;justify-content:center;z-index:20;flex-direction:column;gap:8px;padding:16px}
+#modal img{max-width:96vw;max-height:84vh;border-radius:8px} #modal p{color:#ddd;margin:0;max-width:96vw}
+svg text{fill:var(--mute);font-size:1em}
+.grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:14px;margin:12px 0} #ar h3{margin:14px 0 6px;font-size:13px;color:var(--mute)} #ar .kpis{margin-top:4px} #arsel{max-width:100%}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:12px}
+.lvnow{display:flex;align-items:center;gap:12px 20px;flex-wrap:wrap;margin-bottom:6px}
+.lvnow .lv{font-size:26px;font-weight:700} .lvnow .xpbar{flex:1 1 160px;max-width:320px}
+.lvnow .eta{display:flex;gap:8px;flex-wrap:wrap} .lvnow .eta span{background:var(--panel2);border:1px solid var(--line);border-radius:99px;padding:2px 10px;font-size:12px}
+.stats .blk{background:var(--panel2);border:1px solid var(--line);border-radius:8px;padding:10px 12px}
+.stats h3{margin:0 0 6px;font-size:12px;color:var(--mute)} .stats .big{font-size:20px;font-weight:700}
+.stats table td,.stats table th{padding:2px 6px}
+button{background:var(--panel2);border:1px solid var(--line);color:var(--text);border-radius:6px;padding:4px 12px;cursor:pointer;font:inherit}
+button:hover{border-color:var(--accent)}
+.legend{display:flex;gap:10px;flex-wrap:wrap;font-size:12px;margin-top:4px;color:var(--mute)} .legend i{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:4px}
+.nekobanner{position:sticky;top:0;z-index:20;background:#c2410c;color:#fff;border-radius:8px;padding:12px 14px;display:flex;gap:12px;align-items:flex-start;box-shadow:0 2px 12px #0006;font-size:15px}
+.nekobanner[hidden]{display:none}
+.nekobanner b{font-size:17px} .nekobanner ul{margin:4px 0 0;padding-left:18px} .nekobanner button{margin-left:auto;white-space:nowrap;background:#fff;color:#c2410c;border:0;border-radius:6px;padding:8px 12px;font-weight:700;cursor:pointer}
+.band{grid-column:1/-1;border-radius:10px;padding:10px 14px;font-weight:700;border:1px solid}
+.band.bad{background:#f8514926;border-color:var(--bad);color:var(--bad)} .band.warn{background:#d2992226;border-color:var(--warn);color:var(--warn)}
+.band[hidden]{display:none}
+.pace{display:flex;flex-wrap:wrap;gap:6px 22px;align-items:baseline}
+.pace{font-variant-numeric:tabular-nums} .pace b{font-size:20px;display:inline-block;min-width:3.4ch} .pace .mute{font-size:12px} .num3{display:inline-block;min-width:3ch;text-align:right}
+.fr{display:grid;grid-template-columns:1fr auto auto;gap:0 12px;padding:6px 0;border-bottom:1px solid var(--line)} .fr:last-child{border:0} .fd{grid-column:1/-1;font-size:12px}
+tr.unread td{background:#c2410c33;font-weight:700}
+@media (pointer:coarse){button,select,input{min-height:44px}}
+@media (max-width:1200px){
+  header{flex-wrap:nowrap} header h1{flex:none;white-space:nowrap} header .badge{flex:none;white-space:nowrap}
+  header #msg{flex:1 1 0;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis} header .sp{display:none} header button{flex:none;white-space:nowrap}
+}
+@media (max-width:1000px){header small{display:none}}
+@media (min-width:601px) and (max-width:1100px){.kpis{grid-template-columns:repeat(3,1fr)}}
+@media (min-width:1101px){.kpis{grid-template-columns:repeat(6,1fr)}}
+@media (max-width:600px){
+  header{padding:8px 12px;gap:8px} main{padding:10px 12px;gap:10px}
+  header{position:static;flex-wrap:wrap} header small{display:inline} header h1{flex:1 1 0;min-width:0;overflow:hidden;text-overflow:ellipsis}
+  header #msg{order:5;flex:1 1 100%;min-height:21px} header button,header small{order:6} header small{margin-left:auto}
+  .kpi .v{font-size:22px} .kpis{grid-template-columns:repeat(2,1fr)}
+  table{font-size:12px} .scroll{max-height:260px}
+}
+</style>
+</head>
+<body>
+<header>
+  <h1>🎣 ぽこぽこファーム 釣り監視</h1>
+  <span id="badge" class="badge wait">接続中</span>
+  <span id="msg" class="mute"></span>
+  <span class="sp"></span>
+  <button id="pausebtn" onclick="togglePause()">⏸ 一時停止</button>
+  <button onclick="resetData()" title="現在の記録を data/archive に退避して統計を0から始めます">🗑 データリセット</button>
+  <small id="clock"></small>
+</header>
+<main>
+  <div id="alertband" class="band" hidden></div>
+  <div id="nekobanner" class="nekobanner full" hidden></div>
+  <section class="card full fm">
+    <h2>ファーム定点写真<span class="mute" id="fmmeta" style="margin-left:8px;font-weight:400"></span></h2>
+    <div class="fmbody">
+      <div id="fmwrap" class="fmpic"><img id="fmimg" alt="farm" hidden><img id="fmlive" hidden alt=""><span id="fmlivelb" hidden></span><img id="fmimg0" alt="before" hidden><canvas id="fmcv"></canvas><div id="fmdiv" hidden><i></i></div><span class="fmlb l" id="fmlb0" hidden>前</span><span class="fmlb r" id="fmlb1" hidden>後</span></div>
+      <div class="fmtxt"><div class="fmctl" id="fmctl"><span class="seg" id="fmside"><button data-p="100">前</button><button data-p="0">後</button></span><button id="fmmark" class="on" title="写真の上のマークを隠す/出す">マーク</button><select id="fmbase" title="この撮影からの変化を見る"></select><button id="fmcal" title="畑 8 面がちょうど収まるようにカメラ位置を自動で調整します(釣りを少し止めます)">画角調整</button></div><div id="fmsched"></div><div id="fmscan"></div><div class="mute" id="fmmsg" style="margin-top:8px;font-size:12px"></div></div>
+    </div>
+  </section>
+  <section class="card full"><h2>速度(匹/5分)</h2><div class="pace" id="pace"></div></section>
+  <section class="kpis" id="kpis"></section>
+
+  <section class="card live">
+    <h2>ライブ画面(1秒更新)</h2>
+    <img id="live" alt="live">
+    <div class="mute" id="livemeta" style="margin-top:6px"></div>
+  </section>
+
+
+
+  <div class="side">
+    <section class="card"><h2>直近の結果</h2><div class="last" id="last">—</div><div class="mute" id="lastsub"></div></section>
+    <section class="card"><h2>結果内訳(全期間)</h2><div class="bars" id="outcomes"></div></section>
+    <section class="card"><h2>魚種別(全期間)</h2><div class="bars" id="fish"></div></section>
+  </div>
+
+  <section class="card wide">
+    <h2>失敗の原因別推移(10分ごと・直近6時間 / 緑=釣果)</h2>
+    <svg id="chart" viewBox="0 0 640 140" width="100%" style="height:auto"></svg>
+    <div class="legend" id="legend"></div>
+  </section>
+  <section class="card half">
+    <h2>時間帯別の成功率(直近24時間)</h2>
+    <svg id="hourly" viewBox="0 0 400 140" width="100%" style="height:auto"></svg>
+  </section>
+  <section class="card full">
+    <h2 title="画面下のレベル表示と経験値バーを読み取り、直近24時間を表示">レベル推移</h2>
+    <div id="lvnow" class="lvnow"></div>
+    <svg id="lvchart" viewBox="0 0 900 140" width="100%" style="height:auto"></svg>
+    <div class="mute" id="lvups"></div>
+  </section>
+  <section class="card full"><h2>調整・運用の統計</h2><div class="stats" id="stats"></div></section>
+  <section class="card full">
+    <h2>ねこちゃんの通知</h2>
+    <div class="scroll"><table id="neko"></table></div>
+  </section>
+  <section class="card full">
+    <h2>注意イベント(未紐付け・未分類・エラー)</h2>
+    <div class="scroll"><table id="others"></table></div>
+  </section>
+
+  <section class="card full">
+    <h2>試行履歴 <select id="filter"><option value="">すべて</option></select></h2>
+    <div class="scroll"><table id="recent"></table></div>
+  </section>
+
+  <section class="card full">
+    <h2>画面証拠 <input id="q" placeholder="絞り込み(例: unknown, caught_12)" size="28"> <span class="mute" id="evcount"></span></h2>
+    <div class="gal" id="gal"></div>
+  </section>
+
+  <section class="card full" id="cfgcard">
+    <h2>設定 <button id="cfgbtn" style="margin-left:8px">開く</button> <span class="mute" id="cfgmsg"></span></h2>
+    <div id="cfgbox" hidden>
+      <input id="cfgq" placeholder="絞り込み(キー・説明)" size="28">
+      <table id="cfgtbl" style="width:100%;border-collapse:collapse;margin-top:8px;font-size:13px"></table>
+      <div style="margin-top:8px"><button id="cfgsave" disabled>変更を保存</button> <span class="mute">空欄にして保存すると既定値へ戻ります。「再起動」付きの項目は、保存後に釣りプロセスを再起動すると反映されます。</span></div>
+    </div>
+  </section>
+
+  <section class="card full" id="archivecard">
+    <h2>アーカイブ(データリセットで退避した記録) <select id="arsel" onchange="arShow(this.value)"></select></h2>
+    <div id="ar"><span class="mute">読み込み中…</span></div>
+  </section>
+  <section class="card full"><h2>ログ</h2><pre id="log"></pre></section>
+</main>
+<div id="modal" onclick="this.style.display='none'"><img id="mimg"><p id="mtxt"></p></div>
+
+<script>
+const OJ={caught:'釣果',early:'早すぎ',escaped:'逃げられた',unknown:'結果不明',no_bite_reset:'当たりなし引き直し',cast_failed:'投げ失敗',missed_bite:'当たり見逃し'};
+const SJ={wait_window:'VRChat待機',cooldown:'投げ待ち',cast_wait:'着水待ち',wait_bite:'当たり待ち',result_wait:'結果確認',starting:'起動中'};
+const $=id=>document.getElementById(id);
+const esc=s=>String(s??'').replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
+const fmtT=ts=>new Date(ts).toLocaleTimeString('ja-JP');
+const chip=o=>`<span class="chip o-${o}">${OJ[o]||o}</span>`;
+let S=null;
+function kpi(t,v,s){return `<div class="card kpi"><h2>${t}</h2><div class="v">${v}</div><div class="s">${s||''}</div></div>`}
+function rate(x){return x.success_rate==null?'—':x.success_rate+'%'}
+function hms(sec){sec=Math.max(0,sec|0);return `${(sec/3600)|0}h${String((sec%3600/60)|0).padStart(2,'0')}m`}
+function render(d){
+  S=d;const st=d.status||{};
+  const b=$('badge');
+  if(!d.alive){b.className='badge stop';b.textContent='停止中'}
+  else if(FP.phase&&st.paused){b.className='badge wait';b.textContent=FP.phase+'中'}
+  else if(st.paused){b.className='badge wait';b.textContent='一時停止中'}
+  else if(['wait_window'].includes(st.state)){b.className='badge wait';b.textContent=SJ[st.state]}
+  else{b.className='badge run';b.textContent='稼働中 · '+(SJ[st.state]||st.state)}
+  $('msg').textContent=(st.message||'')+(st.audit&&!st.audit.ok?' ⚠ 記録監査の不一致':'');
+  $('pausebtn').textContent=st.paused?'▶ 再開':'⏸ 一時停止';$('pausebtn').disabled=!d.alive;
+  $('clock').textContent=new Date().toLocaleString('ja-JP');
+  const up=d.alive?hms(d.now-st.started):'—';
+  const pc=d.pace||{},per=pc.per_hour??0,perw=pc.per_hour_window>=3600?'直近1時間':`今回起動から${Math.max(1,Math.round(pc.per_hour_window/60))}分`;
+  $('kpis').innerHTML=
+    kpi('成功率(直近1時間)',rate(d.hour),`${d.hour.caught}/${d.hour.attempts} 回`)+
+    kpi('成功率(今回起動)',rate(d.session),`${d.session.caught}/${d.session.attempts} 回 · 稼働${up}`)+
+    kpi('釣果(全期間)',d.total.caught,`試行 ${d.total.attempts} · 経験値 +${d.total.exp} · ${d.stats.coins_total.toLocaleString()} コイン`)+
+    kpi('釣果/時',per,`${perw} · ${d.stats.coins_per_hour.toLocaleString()} コイン/時`)+
+    kpi('失敗(全期間)',d.total.attempts-d.total.caught,Object.entries(d.total.outcomes).filter(([k,v])=>k!=='caught'&&v).map(([k,v])=>`${OJ[k]}${v}`).join(' · ')||'なし')+
+    kpi('FPS / 反応',(st.fps??'—'),`ウキ ${st.bobber?st.bobber.join(','):'未検出'} · 引く回数 ${st.pecks_to_reel??'—'}`);
+  const lr=st.last_result;
+  if(lr){$('last').innerHTML=chip(lr.outcome)+' '+esc(lr.fish||'')+(lr.exp?` <span class="mute">+${lr.exp}XP</span>`:'');$('lastsub').textContent=fmtT(lr.ts*1000)+' #'+lr.attempt}
+  const tot=d.total.attempts||1;
+  $('outcomes').innerHTML=d.outcomes.map(o=>{const n=d.total.outcomes[o]||0;return `<div class="row"><span>${chip(o)}</span><div class="bar"><i style="width:${n/tot*100}%;background:var(--${o==='caught'?'ok':(o==='early'||o==='no_bite_reset')?'warn':'bad'})"></i></div><b>${n}</b></div>`}).join('');
+  const fm=Math.max(1,...Object.values(d.total.fish));
+  $('fish').innerHTML=Object.entries(d.total.fish).map(([k,n])=>`<div class="row"><span>${esc(k)}</span><div class="bar"><i style="width:${n/fm*100}%"></i></div><b>${n}</b></div>`).join('')||'<span class="mute">まだありません</span>';
+  const f=$('filter').value;
+  const rows=d.recent.filter(e=>!f||e.outcome===f);
+  $('recent').innerHTML='<tr><th>時刻</th><th>#</th><th>結果</th><th>魚</th><th>XP</th><th>所持</th><th>反応</th><th>通知</th><th>メモ</th><th>OCR</th></tr>'+rows.map(e=>
+    `<tr><td>${fmtT(e.ts)}</td><td>${e.attempt}</td><td>${chip(e.outcome)}</td><td>${esc(e.fish)}${e.fish_inferred?'<span class="mute">(推定)</span>':''}</td><td>${e.exp??''}</td><td>${e.count??''}</td><td>${e.reaction_ms!=null?e.reaction_ms+'ms':''}</td><td>${e.result_ms!=null?e.result_ms+'ms':''}</td><td>${esc(e.note)}</td><td class="ocr">${e.evidence?`<a href="#" onclick="show('${e.evidence}');return false">📷</a> `:''}${e.evidence_click?`<a href="#" onclick="show('${e.evidence_click}');return false">🖱</a> `:''}${esc(e.ocr)}</td></tr>`).join('');
+  nekoBanner(d);alertBand(d);pace(d);
+  $('neko').innerHTML=(d.neko||[]).map(e=>`<tr class="${e._t>(d.neko_ack||0)?'unread':''}"><td>${fmtT(e.ts)}</td><td class="ocr">${e.evidence?`<a href="#" onclick="show('${e.evidence}');return false">📷</a> `:''}${esc(e.text)}</td></tr>`).join('')||'<tr><td class="mute">なし</td></tr>';
+  $('others').innerHTML=d.other_events.map(e=>`<tr><td>${fmtT(e.ts)}</td><td>${esc(e.type)}</td><td class="ocr">${esc(e.kind||'')} ${esc(e.text||e.message||e.note||'')}</td></tr>`).join('')||'<tr><td class="mute">なし</td></tr>';
+  $('log').textContent=d.log.join('\n');
+  $('evcount').textContent=`保存中 ${d.evidence_count} 枚`;
+  chart(d.chart);hourly(d.hourly);stats(d.stats,st);level(d.hud);svgText();
+}
+const FC={early:'var(--warn)',escaped:'#e5534b',unknown:'#a371f7',cast_failed:'#f0883e',missed_bite:'#f85149'};
+const ms=v=>v==null?'—':v+'ms';
+const sec=v=>v==null?'—':v+'秒';
+const pct=(a,b)=>b?Math.round(a/b*100)+'%':'—';
+function dist(t,x,f){return `<div class="blk"><h3>${t}</h3><div class="big">${f(x.p50)}</div><div class="mute">p95 ${f(x.p95)} · 最大 ${f(x.max)} · ${x.n}件</div></div>`}
+function nextBlk(n){
+  if(!n||!n.n)return '';
+  const mx=Math.max(...n.probs.map(p=>p.hi));
+  const bars=n.probs.map(p=>`<div style="display:grid;grid-template-columns:76px 1fr 54px;gap:6px;align-items:center;margin:3px 0"><span>${esc(p.fish)}</span><div class="bar" style="position:relative"><i style="width:${p.p/mx*100}%"></i><u style="position:absolute;top:4px;height:4px;background:var(--text);opacity:.55;left:${p.lo/mx*100}%;width:${(p.hi-p.lo)/mx*100}%"></u></div><b>${p.p}%</b></div>`).join('');
+  const r=n.rare;
+  return `<div class="blk"><h3>次の1匹の推定確率(過去 ${n.n} 匹から・細線は95%区間)</h3>${bars}<div class="mute" style="margin-top:4px">期待コイン ${n.expected_coins} コイン/匹 · ${n.independent?'直前の魚は次に影響しない(χ² '+n.chi2+' / 自由度 '+n.df+')':'直前の魚と相関の可能性あり(χ² '+n.chi2+' / 自由度 '+n.df+')'}</div>${r?`<div class="mute">${esc(r.fish)}が出る確率: 10匹以内 ${r.within[10]}% · 50匹以内 ${r.within[50]}% · 100匹以内 ${r.within[100]}%</div>`:''}</div>`;
+}
+function stats(x,st,el='stats'){
+  if(!x)return;
+  const u=st.uptime||{},tot=Object.values(u).reduce((a,b)=>a+b,0),UJ={active:'釣り中',paused:'一時停止',fg_lost:'前面不在',gap:'キャプチャ断'};
+  const wmax=Math.max(1,...x.wait_hist.map(h=>h.n));
+  const eng=Object.entries(x.engines),en=eng.reduce((a,[,n])=>a+n,0);
+  $(el).innerHTML=
+   `<div class="blk"><h3>連続成功(最後の失敗から)</h3><div class="big">${x.streak} 匹</div><div class="mute">${x.since_failure_s==null?'—':hms(x.since_failure_s)} 経過</div></div>`+
+   dist('反応時間(沈み→クリック)',x.reaction,ms)+dist('結果通知までの時間',x.result,ms)+dist('当たりまでの待ち(着水→沈み)',x.wait,sec)+
+   `<div class="blk"><h3>当たりまでの待ち分布</h3>${x.wait_hist.map(h=>`<div class="row" style="display:grid;grid-template-columns:54px 1fr 30px;gap:6px;align-items:center"><span class="mute">${h.label}</span><div class="bar"><i style="width:${h.n/wmax*100}%"></i></div><b>${h.n}</b></div>`).join('')}</div>`+
+   `<div class="blk"><h3>獲得コイン(全期間)</h3><div class="big">${x.coins_total.toLocaleString()} コイン</div><div class="mute">直近1時間 ${x.coins_per_hour.toLocaleString()} コイン/時 · 1匹あたり平均 ${x.coins_per_catch??'—'}</div></div>`+
+   `<div class="blk"><h3>効率(直近1時間)</h3><div class="big">${x.exp_per_hour} XP/時</div><div class="mute">1匹あたり中央値 ${sec(x.cycle_s)}</div></div>`+
+   (tot?`<div class="blk"><h3>稼働内訳(今回起動)</h3><div class="big">${pct(u.active||0,tot)}</div><div class="mute">${Object.entries(UJ).map(([k,v])=>`${v} ${hms(u[k]||0)}`).join(' · ')}</div></div>`:'')+
+   `<div class="blk"><h3>結果確定の OCR 経路</h3>${eng.map(([k,n])=>`<div>${esc(k)} <b>${n}</b> <span class="mute">${pct(n,en)}</span></div>`).join('')||'<span class="mute">記録なし</span>'}</div>`+
+   nextBlk(x.next)+
+   `<div class="blk"><h3>魚種(出現率・何匹に1回・獲得コイン)${x.fish_inferred?` <span class="mute">うち${x.fish_inferred}匹は所持数の飛びから推定</span>`:''}</h3><div class="fl">${x.fish.map(f=>`<div class="fr"><b>${esc(f.fish)}</b><span>${f.n}匹 · ${f.share}%</span><span class="mute">1/${f.every}</span><div class="fd mute">${f.coins.toLocaleString()}コイン (${f.price??'?'}/匹) · 所持 ${x.inventory[f.fish]??'—'}</div></div>`).join('')}</div></div>`+
+   `<div class="blk"><h3>投げ位置別の成功率</h3><table><tr><th>位置(x,y)</th><th>幅</th><th>試行</th><th>成功率</th></tr>${x.places.map(p=>`<tr><td>${p.x},${p.y}</td><td>${p.w??'—'}</td><td>${p.n}</td><td>${p.rate}%</td></tr>`).join('')||'<tr><td class="mute">記録なし</td></tr>'}</table></div>`;
+}
+function level(h){
+  const n=h.now,svg=$('lvchart'),p=h.points;
+  // 直近30分の「レベル+バー割合」の傾きから到達時刻を見積もる(レベルごとの必要量は一定と仮定)
+  const rc=p.filter(q=>q.t>=(p.length?p[p.length-1].t:0)-1800),dur=s=>s<60?'まもなく':s<3600?Math.round(s/60)+'分':`${(s/3600)|0}時間${Math.round(s%3600/60)}分`;
+  let eta='';
+  if(n&&rc.length>=3&&rc[rc.length-1].t-rc[0].t>=300){
+    const sl=(rc[rc.length-1].v-rc[0].v)/(rc[rc.length-1].t-rc[0].t),v=n.level+(n.xp||0),nx=(Math.floor(v)+1-v)/sl;
+    if(sl>0)eta=`<span>次のレベルまで ${dur(nx)}</span><span>${new Date(Date.now()+nx*1000).toLocaleTimeString('ja-JP',{hour:'2-digit',minute:'2-digit'})} ごろ</span>${h.goal>v?`<span title="必要経験値が各レベルで同じと仮定した概算">Lv${h.goal} まで 約${dur((h.goal-v)/sl)}</span>`:''}<span>${(sl*3600).toFixed(2)} Lv/時</span>`;
+  }
+  const pc=n&&n.xp!=null?Math.round(n.xp*100):null;
+  $('lvnow').innerHTML=n?`<span class="lv">Lv ${n.level}</span><div class="xpbar"><div class="bar"><i style="width:${pc??0}%"></i></div><div class="mute" style="font-size:12px">経験値 ${pc==null?'—':pc+'%'}</div></div><div class="eta">${eta||'<span>ETA 計測中(5分ほど)</span>'}</div>`:'<span class="mute">読取り待ち</span>';
+  $('lvups').textContent=h.ups.length?'レベルアップ: '+h.ups.map(u=>`${new Date(u.t*1000).toLocaleTimeString('ja-JP',{hour:'2-digit',minute:'2-digit'})} → Lv${u.level}`).join(' / '):'';
+  if(p.length<2){svg.innerHTML='<text x="10" y="70">データ収集中</text>';return}
+  const W=900,H=140,m=26,t0=p[0].t,t1=p[p.length-1].t,lo=Math.floor(Math.min(...p.map(q=>q.v))),hi=Math.max(lo+1,Math.ceil(Math.max(...p.map(q=>q.v)))),
+    X=t=>m+(t-t0)/Math.max(1,t1-t0)*(W-2*m),Y=v=>H-18-(v-lo)/(hi-lo)*(H-34);
+  let g='';for(let l=lo;l<=hi;l++)g+=`<line x1="${m}" x2="${W-m}" y1="${Y(l)}" y2="${Y(l)}" stroke="var(--line)"/><text x="2" y="${Y(l)+3}">Lv${l}</text>`;
+  svg.innerHTML=g+`<polyline fill="none" stroke="var(--accent)" stroke-width="2" points="${p.map(q=>X(q.t)+','+Y(q.v)).join(' ')}"/>`+
+    [0,.5,1].map(f=>`<text x="${m+f*(W-2*m)-14}" y="${H-3}">${new Date((t0+f*(t1-t0))*1000).toLocaleTimeString('ja-JP',{hour:'2-digit',minute:'2-digit'})}</text>`).join('');
+}
+function chart(c,id='chart',lg='legend'){
+  const svg=$(id);if(!c.length){svg.innerHTML='<text x="10" y="70">データなし</text>';return}
+  const W=640,H=140,m=18,n=c.length,mx=Math.max(1,...c.map(x=>x.caught+x.fail)),bw=Math.max(3,(W-2*m)/n-2),k=(H-30)/mx;
+  svg.innerHTML=c.map((x,i)=>{const X=m+i*((W-2*m)/n);let y=H-18-x.caught*k;
+    let out=`<rect x="${X}" y="${y}" width="${bw}" height="${x.caught*k}" fill="var(--ok)"/>`;
+    for(const [o,v] of Object.entries(x.by||{})){y-=v*k;out+=`<rect x="${X}" y="${y}" width="${bw}" height="${v*k}" fill="${FC[o]||'var(--bad)'}"><title>${OJ[o]||o} ${v}</title></rect>`}
+    return out+(i%Math.ceil(n/8)===0?`<text x="${X}" y="${H-4}">${new Date(x.t*1000).toLocaleTimeString('ja-JP',{hour:'2-digit',minute:'2-digit'})}</text>`:'')}).join('');
+  $(lg).innerHTML=Object.entries(FC).map(([o,col])=>`<span><i style="background:${col}"></i>${OJ[o]}</span>`).join('');
+}
+function hourly(h,id='hourly'){
+  const svg=$(id);if(!h.length){svg.innerHTML='<text x="10" y="70">データなし</text>';return}
+  const W=400,H=140,m=14,n=h.length,bw=Math.min(28,Math.max(6,(W-2*m)/n-3));
+  svg.innerHTML=h.map((x,i)=>{const X=m+i*((W-2*m)/n),r=x.total?x.caught/x.total:0,bh=r*(H-34);
+    return `<rect x="${X}" y="${H-18-bh}" width="${bw}" height="${bh}" fill="${r>=.8?'var(--ok)':r>=.6?'var(--warn)':'var(--bad)'}"><title>${x.caught}/${x.total}</title></rect>`+
+    `<text x="${X}" y="${H-20-bh-2}">${Math.round(r*100)}</text><text x="${X}" y="${H-4}">${new Date(x.t*1000).getHours()}時</text>`}).join('');
+}
+let arCur='';
+async function arList(){
+  let l;try{l=await (await fetch('/api/archives')).json()}catch(e){return}
+  const sel=$('arsel'),keep=sel.value||arCur;
+  sel.innerHTML=l.length?l.map(a=>`<option value="${a.name}">${arLabel(a)}</option>`).join(''):'<option value="">なし</option>';
+  if(!l.length){$('ar').innerHTML='<span class="mute">退避された記録はまだありません(データリセットすると、ここに残ります)</span>';return}
+  sel.value=l.some(a=>a.name===keep)?keep:l[0].name;
+  if(sel.value!==arCur)arShow(sel.value);
+}
+const arT=t=>t==null?'—':new Date(t*1000).toLocaleString('ja-JP',{month:'numeric',day:'numeric',hour:'2-digit',minute:'2-digit'});
+const arLabel=a=>`${arT(a.start)}〜${a.end==null?'':new Date(a.end*1000).toLocaleTimeString('ja-JP',{hour:'2-digit',minute:'2-digit'})} · 釣果${a.caught} · ${a.success_rate==null?'—':a.success_rate+'%'}`;
+async function arShow(name){
+  if(!name)return;arCur=name;
+  let d;try{const r=await fetch('/api/archive?name='+encodeURIComponent(name));if(!r.ok)throw 0;d=await r.json()}catch(e){$('ar').innerHTML='<span class="mute">読み込めませんでした</span>';return}
+  const t=d.total,x=d.stats,lv=d.level;
+  const fl=Object.entries(t.outcomes).filter(([k,v])=>k!=='caught'&&v).map(([k,v])=>`${OJ[k]}${v}`).join(' · ')||'なし';
+  $('ar').innerHTML=
+    `<section class="kpis">`+
+      kpi('期間',hms(d.end-d.start),`${arT(d.start)} 〜 ${arT(d.end)}`)+
+      kpi('釣果',t.caught,`試行 ${t.attempts} · 経験値 +${t.exp}`)+
+      kpi('成功率',t.success_rate==null?'—':t.success_rate+'%',`失敗: ${fl}`)+
+      kpi('獲得コイン',x.coins_total.toLocaleString(),`1匹あたり平均 ${x.coins_per_catch??'—'}`)+
+      kpi('レベル',lv?`Lv${lv.from}→Lv${lv.to}`:'—','記録の最初と最後')+
+    `</section>`+
+    `<div class="grid2"><div><h3>釣果推移(10分ごと・緑=釣果)</h3><svg id="archart" viewBox="0 0 640 140" width="100%" style="height:auto"></svg><div class="legend" id="arlegend"></div></div>`+
+    `<div><h3>時間帯別の成功率</h3><svg id="arhourly" viewBox="0 0 400 140" width="100%" style="height:auto"></svg></div></div>`+
+    `<div class="stats" id="arstats"></div>`+
+    `<h3>失敗の一覧(新しい順・最大100件)</h3><div class="scroll"><table id="arfail"></table></div>`+
+    (d.neko.length?`<h3>ねこちゃんの通知</h3><div class="scroll"><table>${d.neko.map(e=>`<tr><td>${fmtT(e.ts)}</td><td class="ocr">${esc(e.text)}</td></tr>`).join('')}</table></div>`:'');
+  chart(d.chart,'archart','arlegend');hourly(d.hourly,'arhourly');stats(x,{},'arstats');
+  $('arfail').innerHTML='<tr><th>時刻</th><th>#</th><th>結果</th><th>魚</th><th>メモ</th><th>OCR</th></tr>'+d.failures.map(e=>`<tr><td>${fmtT(e.ts)}</td><td>${e.attempt}</td><td>${chip(e.outcome)}</td><td>${esc(e.fish)}${e.fish_inferred?'(推定)':''}</td><td>${esc(e.note)}</td><td class="ocr">${esc(e.ocr)}</td></tr>`).join('')||'<tr><td class="mute">なし</td></tr>';
+  svgText();
+}
+async function resetData(){
+  if(!confirm('統計と履歴をリセットします。\n現在の記録は data/archive に退避されます(削除はされません)。よろしいですか?'))return;
+  try{await fetch('/api/reset',{method:'POST'})}catch(e){}
+  setTimeout(tick,1500);
+}
+async function togglePause(){
+  const on=!(S&&S.status&&S.status.paused);
+  try{await fetch('/api/pause?on='+(on?1:0),{method:'POST'})}catch(e){}
+  setTimeout(tick,600);
+}
+function svgText(){for(const id of ["chart","hourly","lvchart","archart","arhourly"]){const v=$(id);if(!v)continue;const w=v.clientWidth;if(w)v.style.fontSize=(11*v.viewBox.baseVal.width/w).toFixed(1)+"px"}}
+addEventListener("resize",()=>{if(S)svgText()});
+function alertBand(d){
+  const el=$('alertband'),st=d.status||{},p=d.pace||{};let c='',t='';
+  if(!d.alive){c='bad';t='⛔ 釣りプロセスが停止しています'}
+  else if(FP.phase&&st.paused){c='warn';t=FP.phase==='画角調整'?'📐 画角調整中のため、釣りを一時停止しています(終わると自動で再開します)':'📷 ファーム撮影中のため、釣りを一時停止しています(終わると自動で再開します)'}
+  else if(st.paused){c='warn';t='⏸ 一時停止中です(釣りは止まっています)'}
+  else if((st.cast_fail_streak||0)>=3){c='bad';t=`🎯 投げが${st.cast_fail_streak}回連続で失敗しています。視点が池を向いているか確認してください`}
+  else if((st.miss_streak||0)>=5){c='bad';t=`⚠ ${st.miss_streak}回連続で釣れていません。視点を動かした・ウキが池の遠くに落ちる・水面の花などでウキが見分けにくい、といった変化がないか確認してください`}
+  else if(p.last_catch_age!=null&&p.last_catch_age>120&&st.state!=='wait_window'){c='bad';t=`⚠ ${Math.round(p.last_catch_age)}秒間、釣果がありません`}
+  else if(p.slow_30m>0){c='warn';t=`処理の遅延が直近30分で${p.slow_30m}回ありました(注意イベント参照)`}
+  el.hidden=!t;el.className='band '+c;el.textContent=t;
+}
+const n00=v=>v==null?'--.-':Number(v).toFixed(1).padStart(4,'0');
+function pace(d){
+  const p=d.pace||{},r=(p.restarts||[]).slice(0,innerWidth<=600?3:8);
+  $('pace').innerHTML=`<span><b>${n00(p.per5_5m)}</b> <span class="mute">直近5分</span></span><span><b>${n00(p.per5_30m)}</b> <span class="mute">直近30分</span></span><span><b>${n00(p.per5_60m)}</b> <span class="mute">直近60分</span></span>`+
+    `<span class="mute">最後の釣果 <span class="num3">${p.last_catch_age==null?'-':Math.min(999,Math.round(p.last_catch_age))}</span>秒前 · 再起動(24h) ${r.length?r.map(t=>fmtT(t*1000)).join(' / '):'なし'}</span>`;
+}
+function nekoBanner(d){
+  const un=(d.neko||[]).filter(e=>e._t>(d.neko_ack||0)),b=$('nekobanner');
+  document.title=(un.length?`(🐱${un.length}) `:'')+'ぽこぽこファーム 釣り監視';
+  if(!un.length){b.hidden=true;return}
+  b.hidden=false;
+  b.innerHTML=`<div><b>🐱 ねこちゃんからの通知 ${un.length}件(未確認)</b><ul>${un.slice(0,3).map(e=>`<li>${fmtT(e.ts)} ${esc(e.text)}</li>`).join('')}</ul></div><button onclick="nekoAck()">確認した</button>`;
+}
+async function nekoAck(){try{await fetch('/api/neko_ack',{method:'POST'});tick()}catch(e){}}
+function show(name){$('mimg').src='/evidence/'+name;$('mtxt').textContent=name;$('modal').style.display='flex'}
+const SCHED={};
+const remain=(o,t)=>t?t-(o.now+(performance.now()-o.at)/1000):null;
+const fmtRemain=r=>r<=0?'まもなく':(r>=60?Math.floor(r/60)+'分'+String(Math.floor(r%60)).padStart(2,'0')+'秒':Math.floor(r)+'秒');
+function schedTick(){
+  const f=SCHED.farm,el=$('fmsched');if(!el)return;
+  let big='';
+  if(f){if(f.busy)big=(FP.phase==='画角調整'?'画角調整中…':'撮影中…')+'(釣りを止めています)';else if(!f.interval)big='定期撮影は停止中(間隔 0)';else{const r=remain(f,f.next);big=r!==null&&r>0?'次の撮影まで <span style="color:var(--info)">'+fmtRemain(r)+'</span>':'撮影の順番待ち(釣れた直後に止めて撮ります)'}}
+  el.innerHTML=big?'<div class="big">'+big+'</div>':'';
+}
+setInterval(schedTick,1000);
+async function tick(){
+  try{const j=await (await fetch('/api/state',{cache:'no-store'})).json();SCHED.state={now:j.now,at:performance.now(),s:(j.status||{}).schedule||{}};render(j)}catch(e){$('badge').className='badge stop';$('badge').textContent='ダッシュボード切断'}
+}
+async function evidence(){
+  try{const l=await (await fetch('/api/evidence?limit=48&q='+encodeURIComponent($('q').value),{cache:'no-store'})).json();
+  $('gal').innerHTML=l.map(e=>`<figure onclick="show('${e.name}')"><img loading="lazy" src="/evidence/${e.name}"><figcaption title="${esc(e.ocr)}">${esc(e.name.slice(9,15))} ${esc(e.name.slice(20,-4))}</figcaption></figure>`).join('')}catch(e){}
+}
+function live(){$('live').src='/live.jpg?'+Date.now()}
+$('live').onload=()=>{$('livemeta').textContent='更新 '+new Date().toLocaleTimeString('ja-JP')};
+$('filter').innerHTML+=Object.entries(OJ).map(([k,v])=>`<option value="${k}">${v}</option>`).join('');
+$('filter').onchange=()=>S&&render(S);$('q').oninput=evidence;
+let CFG=[],cfgOpen=false;
+const cfgStr=v=>typeof v==='string'?v:JSON.stringify(v);
+function cfgRender(){
+  const q=$('cfgq').value.toLowerCase();
+  $('cfgtbl').innerHTML=CFG.filter(c=>!q||c.key.includes(q)||c.desc.toLowerCase().includes(q)).map(c=>{
+    const d=JSON.stringify(c.value)!==JSON.stringify(c.default);
+    return `<tr style="border-top:1px solid var(--line)"><td style="padding:5px 8px 5px 0;white-space:nowrap"><code>${c.key}</code>${c.restart?' <span class="mute">再起動</span>':''}</td>`+
+      `<td style="padding:5px 8px 5px 0" class="mute">${c.desc}</td>`+
+      `<td style="padding:5px 0"><input data-k="${c.key}" value="${cfgStr(c.value).replace(/"/g,'&quot;')}" size="26" style="max-width:100%${d?';border-color:var(--accent,#4a90e2)':''}"></td></tr>`}).join('');
+  $('cfgtbl').querySelectorAll('input').forEach(i=>i.oninput=()=>{$('cfgsave').disabled=false});
+}
+async function cfgLoad(){try{CFG=(await (await fetch('/api/config')).json()).items;cfgRender()}catch(e){$('cfgmsg').textContent='読み込めません'}}
+$('cfgbtn').onclick=()=>{cfgOpen=!cfgOpen;$('cfgbox').hidden=!cfgOpen;$('cfgbtn').textContent=cfgOpen?'閉じる':'開く';if(cfgOpen)cfgLoad()};
+$('cfgq').oninput=cfgRender;
+$('cfgsave').onclick=async()=>{
+  const patch={};
+  for(const i of $('cfgtbl').querySelectorAll('input')){
+    const c=CFG.find(x=>x.key===i.dataset.k);const t=i.value.trim();
+    if(t===cfgStr(c.value))continue;
+    if(t===''){patch[c.key]=null;continue}
+    try{patch[c.key]=typeof c.value==='string'?t:JSON.parse(t)}catch(e){$('cfgmsg').textContent=c.key+': 値の形式が違います';return}
+  }
+  if(!Object.keys(patch).length){$('cfgsave').disabled=true;return}
+  const r=await fetch('/api/config',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(patch)});
+  const j=await r.json();
+  if(!j.ok){$('cfgmsg').textContent='保存できません: '+j.error;return}
+  $('cfgmsg').textContent='保存しました'+(j.restart_required.length?'(再起動で反映: '+j.restart_required.join(', ')+')':'');
+  $('cfgsave').disabled=true;cfgLoad();
+};
+const PLOT_NAME=['上1','上2','上3','上4','下1','下2','下3','下4'];
+// 撮影前後の比較: 植え(p,w)と水やり(b,w)をマスごとに見て増減を数える。隠れて不明(?)のマスは数えない
+const PL=c=>c==='p'||c==='w',WA=c=>c==='b'||c==='w';
+const FDCOL={pg:'#43a047',wg:'#1e88e5',pl:'#e53935',wl:'#fb8c00'};
+function fdDiff(a,b,minW){
+  if(!a||!b||!a.plots||!b.plots||a.plots.length!==b.plots.length)return null;
+  const out={plots:[],pg:0,wg:0,pl:0,wl:0,cells:[]};
+  a.plots.forEach((p,i)=>{const q=b.plots[i],o={pg:0,wg:0,pl:0,wl:0};
+    for(let k=0;k<12;k++){const x=p.cells[k],y=q.cells[k];if(x==='?'||y==='?'||x===undefined||y===undefined)continue;
+      // 水やりは、濃い土の割合が十分変わったときだけ変化とする(薄茶と濃茶の境目では写真ごとに揺れるため)。古い写真は割合が無いので文字だけで判定
+      const dw=(p.wet&&q.wet)?q.wet[k]-p.wet[k]:null,big=dw===null?true:Math.abs(dw)>=(minW||40);
+      const kinds=[];
+      if(!PL(x)&&PL(y)){o.pg++;kinds.push('pg')}else if(PL(x)&&!PL(y)){o.pl++;kinds.push('pl')}
+      if(!WA(x)&&WA(y)&&big){o.wg++;kinds.push('wg')}else if(WA(x)&&!WA(y)&&PL(x)&&PL(y)&&big){o.wl++;kinds.push('wl')}   // 水戻りは植えが残ったまま乾いた場合だけ(収穫で空き地に戻ったときは植え消失に含める)
+      if(kinds.length)out.cells.push({i,k,kinds});}
+    out.plots.push(o);out.pg+=o.pg;out.wg+=o.wg;out.pl+=o.pl;out.wl+=o.wl;});
+  return out;
+}
+const FM={pos:0,base:'',mark:(()=>{try{return localStorage.getItem('fmmark')!=='0'}catch(e){return true}})()};
+const hhmm=(ts,sec)=>new Date(ts*1000).toLocaleTimeString('ja-JP',sec?{hour12:false}:{hour12:false,hour:'2-digit',minute:'2-digit'});
+// 撮影・画角調整の間は、釣りを止めている理由と Spout の映像をリアルタイムで出す
+const FP={phase:'',note:'',busy:false};
+async function farmPhase(){
+  try{const j=await (await fetch('/api/farm/phase',{cache:'no-store'})).json();
+    const was=FP.busy;Object.assign(FP,j);
+    const lv=$('fmlive');lv.hidden=!j.phase;$('fmlivelb').hidden=!j.phase;
+    if(j.phase){lv.src='/farm_live.jpg?'+Date.now();$('fmlivelb').textContent='LIVE · '+j.phase+'中'+(j.note?' · '+j.note:'')}
+    if(was!==j.busy){schedTick();if(S)alertBand(S);if(!j.busy)farm()}
+  }catch(e){}
+}
+setInterval(farmPhase,400);
+async function farm(){
+  try{const j=await (await fetch('/api/farm?limit=24')).json();const it=j.items||[];SCHED.farm={now:j.now,at:performance.now(),next:j.next_at,busy:j.busy,interval:j.interval};schedTick();
+    farm.items=it;farm.inset=j.inset;farm.waterMin=j.water_min;
+    if(!it.length){$('fmimg').hidden=true;$('fmmsg').textContent='撮影待ち(約'+Math.round(j.interval/60)+'分おき)';return}
+    $('fmmsg').textContent='約'+Math.round(j.interval/60)+'分おきに撮影(釣りを約5秒止めます)';
+    fmRender();
+  }catch(e){}
+}
+// 1 枚の写真に「現状」(植えなしの枠)と「変化」(前回からの増減の枠)を切り替えて重ねる。変化では写真をタップすると前後が入れ替わる
+function fmRender(){
+  const all=farm.items||[],its=all.filter(x=>x.scan&&x.scan.plots);
+  if(!all.length)return;
+  const latest=all[0],canDiff=its.length>=2&&its[0]===latest;
+  const base=canDiff?((FM.base&&its.slice(1).find(o=>o.name===FM.base))||its[1]):null;
+  const diff=canDiff?fdDiff(base.scan,latest.scan,farm.waterMin):null;
+  const inDiff=!!diff,cur=latest;
+  fmRender.diff=diff;
+  $('fmbase').hidden=!inDiff;$('fmside').hidden=!inDiff;
+  if(canDiff){const sel=$('fmbase'),opts=its.slice(1),sig=opts.map(o=>o.name).join();
+    if(sel.dataset.sig!==sig){sel.dataset.sig=sig;sel.innerHTML='<option value="">前回との比較</option>'+opts.map(o=>'<option value="'+o.name+'">'+hhmm(o.ts,true)+' から</option>').join('')}
+    sel.value=FM.base}
+  if(farm.top!==cur.name){farm.top=cur.name;$('fmimg').src='/farm/'+cur.name}
+  $('fmimg').hidden=false;$('fmwrap').classList.toggle('tog',inDiff);
+  const b0=$('fmimg0');b0.hidden=!inDiff;$('fmdiv').hidden=!inDiff;$('fmlb0').hidden=!inDiff;$('fmlb1').hidden=!inDiff;
+  if(inDiff&&b0.dataset.n!==base.name){b0.dataset.n=base.name;b0.src='/farm/'+base.name}
+  $('fmmeta').textContent=inDiff?hhmm(base.ts)+' → '+hhmm(cur.ts):hhmm(cur.ts);
+  farm.scan=cur.scan;drawScan();
+}
+function drawScan(){
+  const s=farm.scan,cv=$('fmcv'),im=$('fmimg'),box=$('fmscan'),d=fmRender.diff;
+  if(!s||!s.plots){box.textContent='';cv.getContext('2d').clearRect(0,0,cv.width,cv.height);return}
+  const w=im.clientWidth,h=im.clientHeight;if(!w)return;
+  cv.width=w;cv.height=h;const g=cv.getContext('2d');g.clearRect(0,0,w,h);g.lineWidth=2;
+  $('fmmark').classList.toggle('on',FM.mark);
+  wipe();
+  const [ix,iy]=farm.inset||[0.05,0.035];
+  // 解析と同じ位置(畑の枠の内側へ寄せたマス中心)。r はマスの大きさに合わせた半径
+  const pos=(p,k)=>{const q=p.quad,P=n=>[q[2*n]*w,q[2*n+1]*h];const [a,b,c,dd]=[P(0),P(1),P(2),P(3)];
+    const u=ix+(1-2*ix)*((k%3)+.5)/3,v=iy+(1-2*iy)*(Math.floor(k/3)+.5)/4,tx=a[0]+(b[0]-a[0])*u,ty=a[1]+(b[1]-a[1])*u,bx=dd[0]+(c[0]-dd[0])*u,by=dd[1]+(c[1]-dd[1])*u;
+    return[tx+(bx-tx)*v,ty+(by-ty)*v,Math.hypot(b[0]-a[0],b[1]-a[1])*(1-2*ix)/3*0.42]};
+  const pill=(t,c)=>'<span style="color:'+c+'">'+t+'</span>';
+  const NOW={e:'#e53935',b:'#fb8c00','?':'#ab47bc'};
+  // 現状: 塗りの点(植えなし=赤、植えなし・水やり済=橙、隠れて不明=紫)。変化: 枠(植えた=緑、水やり=青、植え消失=赤、水戻り=橙)
+  if(FM.mark&&s.unplanted!==undefined)s.plots.forEach(p=>{for(let k=0;k<12;k++){const ch=p.cells[k];if(!NOW[ch])continue;const [x,y,r]=pos(p,k);g.fillStyle=NOW[ch];g.beginPath();g.arc(x,y,r*0.32,0,6.3);g.fill()}});
+  if(FM.mark&&d)d.cells.forEach(c=>{const [x,y,r0]=pos(s.plots[c.i],c.k);c.kinds.forEach((kd,n)=>{g.strokeStyle=FDCOL[kd];const r=r0*(1-n*0.3);g.strokeRect(x-r,y-r,r*2,r*2)})});
+  const at=(cells,set)=>{const o=[];for(let k=0;k<12;k++)if(set.includes(cells[k]))o.push((Math.floor(k/3)+1)+'-'+(k%3+1));return o};
+  const chips=s.plots.map((p,i)=>{
+    const pl=s.unplanted!==undefined?at(p.cells,'eb'):[],o=d&&d.plots[i];
+    const ch=o?[o.pg?'<span style="color:'+FDCOL.pg+'">植 +'+o.pg+'</span>':'',o.wg?'<span style="color:'+FDCOL.wg+'">水 +'+o.wg+'</span>':'',o.pl?'<span style="color:'+FDCOL.pl+'">植 −'+o.pl+'</span>':'',o.wl?'<span style="color:'+FDCOL.wl+'">水戻 '+o.wl+'</span>':''].filter(Boolean).join(' '):'';
+    return '<div'+(pl.length?' class="bad"':'')+'><b>'+(PLOT_NAME[i]||('畑'+(i+1)))+'</b>'
+      +(pl.length?'<span class="cells">植えなし '+pl.join(' ')+'</span>':'<span class="ok">植え済</span>')
+      +(d?'<span class="wc">'+(ch||'変化なし')+'</span>':'')+'</div>'}).join('');
+  const none=d&&!(d.pg+d.wg+d.pl+d.wl);
+  box.innerHTML='<div class="fmrow"><em>現状</em><div class="fmsum">'+(s.unplanted!==undefined?pill('植えなし '+s.unplanted,s.unplanted?'#e53935':'#43a047')+pill('水やり前 '+s.dry,'var(--mute)')+pill('水やり済 '+s.done,'var(--mute)')
+    +(s.hidden?pill('不明 '+s.hidden,'#ab47bc'):''):'')+(s.plots.length!==8?pill('畑 '+s.plots.length+'面のみ検出','#e53935'):'')+'</div></div>'
+    +(d?'<div class="fmrow"><em>変化</em><div class="fmsum">'+pill('植え +'+d.pg,FDCOL.pg)+pill('水やり +'+d.wg,FDCOL.wg)+(d.pl?pill('植え −'+d.pl,FDCOL.pl):'')+(d.wl?pill('水戻り '+d.wl,FDCOL.wl):'')+(none?pill('変化なし','var(--mute)'):'')+'</div></div>':'')
+    +'<div class="fmplots">'+chips+'</div>'
+    +'<div class="fmleg"><span><b>●</b> 現状: <i style="background:#e53935"></i>植えなし <i style="background:#fb8c00"></i>植えなし+水やり済 <i style="background:#ab47bc"></i>不明</span>'
+    +(d?'<span><b>□</b> 変化: <i style="background:'+FDCOL.pg+'"></i>植えた <i style="background:'+FDCOL.wg+'"></i>水やり <i style="background:'+FDCOL.pl+'"></i>植え消失 <i style="background:'+FDCOL.wl+'"></i>水戻り</span><span>写真を左右になぞる/ダブルクリックで前後を比較</span>':'')+'</div>';
+}
+$('fmimg').addEventListener('load',drawScan);addEventListener('resize',drawScan);
+$('fmmark').addEventListener('click',()=>{FM.mark=!FM.mark;try{localStorage.setItem('fmmark',FM.mark?'1':'0')}catch(e){}drawScan()});
+// 前後の比較: 写真の上をドラッグ(タップ)した位置を境に、左が前・右が後。マークは境界に関係なく全体に出す。「前」「後」ボタンで端まで寄せる
+function wipe(){
+  const im=$('fmimg'),w=im.clientWidth,h=im.clientHeight,on=!!fmRender.diff;if(!w||!on)return;
+  const b0=$('fmimg0');b0.style.width=w+'px';b0.style.height=h+'px';b0.style.clipPath='inset(0 '+(100-FM.pos)+'% 0 0)';
+  $('fmdiv').style.left=(w*FM.pos/100)+'px';
+}
+function wipeTo(e){const r=$('fmimg').getBoundingClientRect();if(!r.width)return;FM.pos=Math.max(0,Math.min(100,(e.clientX-r.left)/r.width*100));wipe()}
+$('fmside').addEventListener('click',e=>{const v=e.target.dataset.p;if(v!==undefined){FM.pos=+v;wipe()}});
+$('fmwrap').addEventListener('dblclick',()=>{if(fmRender.diff){FM.pos=FM.pos<50?100:0;wipe()}});
+$('fmwrap').addEventListener('pointerdown',e=>{if(!fmRender.diff)return;$('fmwrap').setPointerCapture(e.pointerId);wipeTo(e)});
+$('fmwrap').addEventListener('pointermove',e=>{if(fmRender.diff&&e.buttons)wipeTo(e)});
+$('fmcal').addEventListener('click',async e=>{const b=e.currentTarget;if(b.disabled)return;b.disabled=true;b.textContent='調整中…(約1分)';
+  try{const j=await (await fetch('/api/farm/calibrate',{method:'POST'})).json();b.textContent=j.ok?'調整しました':'失敗: '+j.error}catch(x){b.textContent='失敗'}
+  setTimeout(()=>{b.disabled=false;b.textContent='画角調整'},4000);farm()});
+$('fmbase').addEventListener('change',e=>{FM.base=e.target.value;fmRender()});
+farm();setInterval(farm,5000);
+tick();evidence();live();
+setInterval(tick,1500);setInterval(live,1000);setInterval(evidence,8000);arList();setInterval(arList,60000);
+</script>
+</body>
+</html>
