@@ -53,6 +53,27 @@ public sealed class Frame
         return o;
     }
 
+    /// <summary>整数倍(n×n 画素の平均)で縮める。into が同じ大きさなら使い回して確保を避ける(毎フレーム呼ぶ用)。</summary>
+    public Frame BoxDownscale(int n, Frame? into = null)
+    {
+        int w = Width / n, h = Height / n;
+        var o = into is not null && into.Width == w && into.Height == h ? into : new Frame(w, h);
+        int div = n * n, stride = Width * 4;
+        Parallel.For(0, h, y =>
+        {
+            int row = y * n * stride;
+            for (int x = 0; x < w; x++)
+            {
+                int b = 0, g = 0, r = 0, src = row + x * n * 4;
+                for (int yy = 0; yy < n; yy++, src += stride - n * 4)
+                    for (int xx = 0; xx < n; xx++, src += 4) { b += Data[src]; g += Data[src + 1]; r += Data[src + 2]; }
+                int j = (y * w + x) * 4;
+                o.Data[j] = (byte)(b / div); o.Data[j + 1] = (byte)(g / div); o.Data[j + 2] = (byte)(r / div); o.Data[j + 3] = 255;
+            }
+        });
+        return o;
+    }
+
     /// <summary>比率指定の範囲を切り出して新しいフレームにする(境界は切り捨て)。</summary>
     public Frame CropRatio(double l, double t, double r, double b) =>
         Crop((int)(l * Width), (int)(t * Height), (int)(r * Width), (int)(b * Height));

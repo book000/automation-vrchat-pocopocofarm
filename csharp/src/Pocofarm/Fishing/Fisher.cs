@@ -50,6 +50,7 @@ public sealed class Fisher
     Attempt? attempt;
     Bobber? bobber;
     int auditTick;
+    Frame? workFrame;
     readonly List<(double X, double Y)> landings = [];     // 釣れたときのウキ位置(画面に対する比率。ウィンドウの大きさが変わっても使える)。自分のウキは毎回ほぼ同じ場所に着水する
     List<(int, int, int, int)> decoys = [];     // 投げる前から画面にあったウキ候補(他人のウキ・アバターの赤白)。投げ後は探索から除く
     (int X, int Y)? lastPos, castOrigin, expectAway, anchorPos;     // anchorPos: 直近に静止を確認した位置(再開後などで本物のウキを優先して探す)
@@ -393,6 +394,14 @@ public sealed class Fisher
 
     // ---------------------------------------------------------------- メインループ
 
+    /// <summary>4K など高解像度のキャプチャは、整数倍に縮めた作業用フレームで処理する(検出の調子を解像度によらず揃え、処理も軽くする)。</summary>
+    Frame ToWorkFrame(Frame f)
+    {
+        int n = (int)Math.Round(f.Height / (double)cfg.WorkHeight);
+        if (n < 2) return f;
+        return workFrame = f.BoxDownscale(n, workFrame);
+    }
+
     /// <summary>直近の釣果 5 件以上の位置の中央値。足りなければ null。</summary>
     (int X, int Y)? LearnedLanding(Frame f)
     {
@@ -594,6 +603,7 @@ public sealed class Fisher
         }
         var f = frame;
         if (CaptureSizeStale(f, now)) return;
+        f = ToWorkFrame(f);
         if ((f.Width, f.Height) != frameSize)
         {
             frameSize = (f.Width, f.Height);

@@ -39,9 +39,12 @@ public sealed class AutoTuner
     public int PecksToReel { get; private set; }
 
     /// <summary>いま使う待ち時間[秒]。自動調整が無効なら設定値そのまま。</summary>
-    public double ReelToCast => !cfg.TuneReelToCast ? cfg.ReelToCastMin : Math.Clamp(value ?? cfg.ReelToCastMin, Lower, cfg.ReelToCastMin);
+    public double ReelToCast => !cfg.TuneReelToCast ? cfg.ReelToCastMin : Math.Clamp(value ?? cfg.ReelToCastMin, Lower, Upper);
 
-    double Lower => Math.Min(cfg.ReelToCastMin, Math.Max(cfg.ReelToCastFloor, failedAt is { } f ? f + cfg.TuneMargin : 0));
+    // 設定値より長い待ちが要る環境(高解像度で描画が遅く、投げの受付ロックが長引くなど)では、不発のたびに上限まで延ばす
+    double Upper => Math.Max(cfg.ReelToCastMin, cfg.ReelToCastMax);
+
+    double Lower => Math.Min(Upper, Math.Max(cfg.ReelToCastFloor, failedAt is { } f ? f + cfg.TuneMargin : 0));
 
     /// <summary>投げが成功した(ウキが着水して静止した)。dt はそのときの実際の間隔。</summary>
     public void OnCastSucceeded(double dt)
@@ -51,6 +54,8 @@ public sealed class AutoTuner
         if (dt > ReelToCast + cfg.TuneDtTolerance) return;
         if (++streak < cfg.TuneSuccessStreak) return;
         streak = 0;
+        // 設定値を超えて延ばした待ち時間は、長く成功が続いたら不発の記録を薄めて、また縮められるようにする(一時的に遅かっただけの場合に戻れる)
+        if (failedAt is { } fa && ReelToCast > cfg.ReelToCastMin) failedAt = fa - cfg.ReelToCastStep < cfg.ReelToCastFloor ? null : fa - cfg.ReelToCastStep;
         double next = Math.Max(Lower, ReelToCast - cfg.ReelToCastStep);
         if (next >= ReelToCast) return;
         Log.Info($"投げの待ち時間を縮めます: {ReelToCast:F2} → {next:F2} 秒");
@@ -66,7 +71,7 @@ public sealed class AutoTuner
         // 待ち時間より大きく外れた間隔(視線のずれ・長い停止など)の不発は、待ち時間のせいではないので学習しない
         if (dt > ReelToCast + cfg.TuneDtTolerance) return;
         failedAt = failedAt is { } f ? Math.Max(f, Math.Min(dt, ReelToCast)) : Math.Min(dt, ReelToCast);
-        double next = Math.Min(cfg.ReelToCastMin, failedAt.Value + cfg.TuneMargin);
+        double next = Math.Min(Upper, failedAt.Value + cfg.TuneMargin);
         if (next <= ReelToCast) { Save(); return; }
         Log.Warn($"投げが不発だったため待ち時間を戻します: {ReelToCast:F2} → {next:F2} 秒(間隔 {dt:F2} 秒で失敗)");
         value = next;

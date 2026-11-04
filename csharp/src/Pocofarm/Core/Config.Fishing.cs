@@ -28,6 +28,8 @@ public sealed partial class Config
     [Desc("釣れた直後に投げを待つ最小秒数(魚の演出中は投げが無視される環境向け。0 で無効)")] public double AfterCatchCastMin { get; set; } = 0.0;
     [Desc("引きクリックから次の投げまでの最小秒数(投げ受付ロック+余裕)。自動調整が有効なら、これを上限として縮める")] public double ReelToCastMin { get; set; } = 2.0;
 
+    [Desc("自動調整: 投げが不発のとき、待ち時間をここまで延ばしてよい上限[秒](描画が遅い環境で投げの受付ロックが長引く場合の備え)")] public double ReelToCastMax { get; set; } = 6.0;
+
     [Desc("早引きが何回続いたら引く回数を増やすか")] public int EarlyStreakToAdapt { get; set; } = 2;
     [Desc("引く回数の上限")] public int MaxPecksToReel { get; set; } = 3;
     [Desc("成功が何回続いたら引く回数を 1 つ戻すか")] public int CaughtStreakToRevert { get; set; } = 10;

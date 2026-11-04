@@ -339,4 +339,17 @@ public class CoreTests
         Stats.InferMissingFish(open);
         Assert.Equal("", open[1].Str("fish"));
     }
+
+    [Fact]
+    public void BoxDownscale_AveragesBlocksAndReusesBuffer()
+    {
+        var f = new Frame(4, 4);
+        f.Fill(0, 0, 2, 2, 100, 100, 100);
+        f.Fill(2, 0, 4, 2, 200, 200, 200);
+        var o = f.BoxDownscale(2);
+        Assert.Equal((2, 2), (o.Width, o.Height));
+        Assert.Equal(100, o.Data[0]);
+        Assert.Equal(200, o.Data[4]);
+        Assert.Same(o, f.BoxDownscale(2, o));
+    }
 }

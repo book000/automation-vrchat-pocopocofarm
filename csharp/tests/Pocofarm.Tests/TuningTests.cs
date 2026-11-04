@@ -15,6 +15,18 @@ public class TuningTests : IDisposable
     Config Cfg() => new() { ReelToCastMin = 2.0, ReelToCastFloor = 1.2, ReelToCastStep = 0.1, TuneSuccessStreak = 3, TuneMargin = 0.1 };
 
     [Fact]
+    public void FailuresBeyondConfiguredWait_RaiseItUpToMax_ThenRelaxAfterSuccesses()
+    {
+        var cfg = Cfg(); cfg.ReelToCastMax = 4.0;
+        var t = new AutoTuner(cfg, Path.Combine(dir, "t.json"));
+        for (int i = 0; i < 40; i++) t.OnCastFailed(t.ReelToCast);
+        Assert.True(t.ReelToCast > 2.0 && t.ReelToCast <= 4.0);
+        double raised = t.ReelToCast;
+        for (int i = 0; i < 400; i++) t.OnCastSucceeded(t.ReelToCast);
+        Assert.True(t.ReelToCast < raised);
+    }
+
+    [Fact]
     public void Tuner_ShrinksAfterSuccessStreakDownToFloor()
     {
         var t = new AutoTuner(Cfg(), Path.Combine(dir, "t.json"));
@@ -41,7 +53,8 @@ public class TuningTests : IDisposable
     [Fact]
     public void Tuner_FailureAtUpperLimitDoesNotThrow()
     {
-        var t = new AutoTuner(Cfg(), Path.Combine(dir, "t.json"));
+        var cfg = Cfg(); cfg.ReelToCastMax = 2.0;
+        var t = new AutoTuner(cfg, Path.Combine(dir, "t.json"));
         t.OnCastFailed(t.ReelToCast);   // 上限のまま不発 → 下限が上限を超えても例外にしない
         Assert.Equal(2.0, t.ReelToCast, 3);
     }
