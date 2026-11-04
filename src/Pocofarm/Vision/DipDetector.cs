@@ -14,6 +14,12 @@ public sealed class DipDetector(DipParams p)
     int dipRun;
     double lastT, dtAvg = 0.033, baseX;
 
+    readonly Queue<bool> seenRing = new();
+    int seenBeforeLoss;
+
+    /// <summary>見失い沈みの確認(LostGuard)で採用しなかった回数。</summary>
+    public int SuppressedLost { get; private set; }
+
     public double BaseY { get; private set; }
     public double BaseW { get; private set; } = 10.0;
     public bool Armed { get; private set; }
@@ -34,11 +40,23 @@ public sealed class DipDetector(DipParams p)
         lastT = t;
         // 静止位置から横に大きく離れた物体は別物(他人のアバターの一部など)なので、見えなかったものとして扱う
         if (b is not null && Armed && Math.Abs(b.X - baseX) > Math.Max(p.MaxLateralPx, BaseW * p.MaxLateralWidths)) b = null;
+        if (Armed && p.LostGuardFrames > 0)
+        {
+            if (b is null && lostSince is null) seenBeforeLoss = seenRing.Count(x => x);      // 見失う直前までにウキが見えていた数
+            seenRing.Enqueue(b is not null);
+            if (seenRing.Count > p.LostGuardFrames) seenRing.Dequeue();
+        }
         if (b is null)
         {
             dipRun = 0;
             lostSince ??= t;
-            if (Armed && !lostFired && t - lostSince.Value >= p.LostSeconds) { lostFired = true; return "dip"; }
+            if (Armed && !lostFired && t - lostSince.Value >= p.LostSeconds)
+            {
+                lostFired = true;
+                // 直前にほとんど見えていなかったなら、検出が不安定なだけで沈みではない
+                if (p.LostGuardFrames > 0 && seenBeforeLoss < p.LostGuardSeen) { SuppressedLost++; return null; }
+                return "dip";
+            }
             return null;
         }
         lostSince = null; lostFired = false;
