@@ -21,6 +21,7 @@ public sealed class Attempt(int id, double tDip, double tClick, (int X, int Y)? 
     public double InfoUntil { get; set; }
     public string PartialNote { get; set; } = "";
     public string Engine { get; set; } = "";          // 結果を確定させた OCR 経路
+    public double TCast { get; set; }                  // 直近の投げクリックの時刻
     public double TArmed { get; set; }                 // 着水静止から最初の沈みまでの待ち時間を測る起点
     public Task<RecoverResult>? Recovery { get; set; }  // OCR スレッドでの再読取り(進行中)
     public double RecoveryStarted { get; set; }

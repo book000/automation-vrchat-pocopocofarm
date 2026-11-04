@@ -42,6 +42,9 @@ public sealed class AttemptRecorder(Config cfg, EventLog events, Status status, 
             ["engine"] = a?.Engine ?? "",
             // 着水静止から最初の沈みまでの秒数。確認クリックの引き直しは当たりを待った時間ではないので除く
             ["wait_s"] = a is { TArmed: > 0, Probe: false } && a.TDip > a.TArmed ? Math.Round(a.TDip - a.TArmed, 1) : null,
+            // 投げクリックから着水静止・最初の沈みまでの秒数。当たり待ちのタイマーの起点を調べる
+            ["cast_to_armed_s"] = a is { TCast: > 0, TArmed: > 0, Probe: false } && a.TArmed > a.TCast ? Math.Round(a.TArmed - a.TCast, 2) : null,
+            ["cast_to_dip_s"] = a is { TCast: > 0, Probe: false } && a.TDip > a.TCast ? Math.Round(a.TDip - a.TCast, 2) : null,
             ["pos"] = a?.PosBefore is { } p ? new[] { p.X, p.Y } : null,
             ["bobber_w"] = a is { BaseW: > 0 } ? (int)Math.Round(a.BaseW) : null,
         };
