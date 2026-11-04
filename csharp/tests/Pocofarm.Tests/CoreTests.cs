@@ -10,6 +10,18 @@ public class CoreTests
     static readonly string[] Fish = ["ドジョウ", "フナ", "コイ", "ナマズ", "ニジマス", "金色のコイ"];
 
     [Fact]
+    public void Classify_SeaFish()
+    {
+        var known = new Config().KnownFish;
+        foreach (var name in new[] { "サケ", "エビ", "タイ", "ブリ", "ヒラメ", "マグロ" })
+        {
+            var t = Toast.Classify($"{name}が釣れた!+20経験値(持っている3匹)", known)!;
+            Assert.Equal((Toast.Caught, name, 20, 3), (t.Kind, t.Fish, t.Exp, t.Count));
+            Assert.True(new Config().FishCoins.ContainsKey(name));
+        }
+    }
+
+    [Fact]
     public void Classify_CaughtWithOcrNoise()
     {
         var t = Toast.Classify("ドドジョウが釣れた!+2経験値(持っている28匹)", Fish)!;

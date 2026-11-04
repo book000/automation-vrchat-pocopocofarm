@@ -39,7 +39,7 @@ public sealed partial class Config
     [Desc("静止位置から横にウキ幅のこの倍数以上離れた物体は、ウキではないとして無視する")] public double DipMaxLateralWidths { get; set; } = 4;
 
     [Desc("ウキが元の位置から動いたとみなす距離[px](基準解像度)")] public double CastMovedPx { get; set; } = 40;
-    [Desc("投げる前から見えていたウキ候補(他人のウキ)を、投げ後の探索から除く範囲の余白[px](基準解像度)")] public double BobberDecoyPad { get; set; } = 8;
+    [Desc("投げる前から見えていたウキ候補(他人のウキ)を、投げ後の探索から除く範囲の余白[px](基準解像度)")] public double BobberDecoyPad { get; set; } = 30;
     [Desc("追跡中のウキ候補より本物らしい物がないか、画面全体を探し直すフレーム間隔")] public int BobberAuditFrames { get; set; } = 24;
     [Desc("画面全体の候補の点数が追跡中の候補のこの倍率を超えたら、そちらへ乗り換える")] public double BobberSwitchRatio { get; set; } = 1.5;
     [Desc("ウキが元の位置に残っているとみなす距離[px](基準解像度)")] public double BobberNearPx { get; set; } = 15;

@@ -27,9 +27,9 @@ public sealed partial class Config
     [Desc("再探索した位置が現在の領域とこの画素数以内なら、ずれではないとして補正しない")] public double HudRecalibrateMinPx { get; set; } = 3.0;
     [Desc("HUD の値が変わらなくても記録する間隔[秒]")] public double HudWriteInterval { get; set; } = 60;
 
-    [Desc("魚の名前の一覧")] public List<string> KnownFish { get; set; } = ["ドジョウ", "フナ", "コイ", "ナマズ", "ニジマス", "金色のコイ", "イトウ"];
+    [Desc("魚の名前の一覧")] public List<string> KnownFish { get; set; } = ["ドジョウ", "フナ", "コイ", "ナマズ", "ニジマス", "金色のコイ", "イトウ", "サケ", "エビ", "タイ", "ブリ", "ヒラメ", "マグロ"];
     [Desc("魚ごとの売値コイン")] public Dictionary<string, int> FishCoins { get; set; } = new()
     {
-        ["フナ"] = 3, ["ドジョウ"] = 5, ["コイ"] = 12, ["ナマズ"] = 20, ["ニジマス"] = 28, ["金色のコイ"] = 150, ["イトウ"] = 400,
+        ["フナ"] = 3, ["ドジョウ"] = 5, ["コイ"] = 12, ["ナマズ"] = 20, ["ニジマス"] = 28, ["金色のコイ"] = 150, ["イトウ"] = 400, ["サケ"] = 50, ["エビ"] = 30, ["ブリ"] = 4500, ["ヒラメ"] = 4000, ["タイ"] = 5000, ["マグロ"] = 6000,
     };
 }
