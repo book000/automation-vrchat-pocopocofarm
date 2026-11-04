@@ -164,7 +164,7 @@ public class OpsTests : IDisposable
         using var zip = new ZipArchive(new MemoryStream(ms.ToArray()));
         var names = zip.Entries.Select(e => e.FullName).ToHashSet();
         Assert.Superset(new HashSet<string> { "fishing.log.tail.txt", "crash.log.tail.txt", "status.json", "config.redacted.json", "system.txt", "README.txt" }, names);
-        Assert.Equal(20, names.Count(n => n.StartsWith("evidence/")));         // jpg+json の 10 組
+        Assert.Equal(20, names.Count(n => n.StartsWith("evidence/", StringComparison.Ordinal)));         // jpg+json の 10 組
         Assert.Contains("evidence/e00.jpg", names);
         Assert.DoesNotContain("evidence/e11.jpg", names);
 

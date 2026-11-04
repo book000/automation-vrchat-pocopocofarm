@@ -25,7 +25,9 @@ public static class Health
     public const int RecentN = 30, BaselineN = 300, MinRecent = 20;
 
     /// <summary>ダッシュボードが最後に計算した結果。釣りの本体(同じプロセス)が status.json に載せたいときに読む。</summary>
-    public static volatile HealthReport? Latest;
+    public static HealthReport? Latest { get => latest; set => latest = value; }
+
+    static volatile HealthReport? latest;
 
     // 相対: 反応 p95 が基準の 2 倍かつ 40ms 超 / 結果不明 +15pt / 見逃し +25pt / OCR 空 +30pt / FPS が基準の 6 割未満
     const double ReactRatio = 2.0, ReactMinMs = 40, UnknownDelta = 0.15, MissedDelta = 0.25, NoOcrDelta = 0.30, FpsRatio = 0.6;
