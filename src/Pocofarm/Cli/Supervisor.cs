@@ -66,7 +66,9 @@ public static class Supervisor
                     p.Kill(true);
                     p.WaitForExit(5000);
                     Osc.ReleaseUse(cfg.OscPort);
-                    if (SelfUpdate.Swap(self, next, args)) { Log.Info("入れ替えました。新しい常駐に引き継ぎます"); return 0; }
+                    bool swapped = SelfUpdate.Swap(self, next, args);
+                    EventLog.Note(paths.Events, "self_update", ("ok", swapped));
+                    if (swapped) { Log.Info("入れ替えました。新しい常駐に引き継ぎます"); return 0; }
                 }
             }
             Log.Warn($"釣りプロセスが終了(code={p.ExitCode})。{cfg.RestartDelay:0.#}秒後に再起動します");

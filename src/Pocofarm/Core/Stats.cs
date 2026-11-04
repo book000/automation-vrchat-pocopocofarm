@@ -3,7 +3,7 @@ using System.Text.Json.Nodes;
 namespace Pocofarm.Core;
 
 /// <summary>試行イベントから調整・運用向けの統計を計算する(ダッシュボード用の純粋関数)。</summary>
-public static class Stats
+public static partial class Stats
 {
 
     static double R1(double v) => Math.Round(v, 1);

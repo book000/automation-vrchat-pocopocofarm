@@ -28,12 +28,17 @@ public sealed class EventLog
     /// <summary>このセッションの開始時刻(epoch 秒)。リセットで更新される。</summary>
     public double SessionStart { get; private set; } = Now();
 
-    public EventLog(string path)
+    public EventLog(string path) : this(path, true) { }
+
+    EventLog(string path, bool scanSeq)
     {
         this.path = path;
         Directory.CreateDirectory(Path.GetDirectoryName(path)!);
-        seq = LastSeq();
+        if (scanSeq) seq = LastSeq();
     }
+
+    /// <summary>試行番号の走査なしで 1 件追記する。設定変更・入れ替え・自動調整など、釣りの本体以外からの出来事を残す用(全件を読み直さない)。</summary>
+    public static void Note(string path, string type, params (string Key, object? Value)[] fields) => new EventLog(path, false).Write(type, fields);
 
     public static double Now() => DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() / 1000.0;
 

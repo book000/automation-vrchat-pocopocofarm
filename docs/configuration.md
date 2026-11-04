@@ -215,6 +215,8 @@ Periodic photos of the farm through the in-game camera, and their analysis. Requ
 |---|---|---|---|---|
 | `farm_shot_interval` | number | `600` |  | Interval (seconds) between farm photos. 0 disables them. A photo requires VRChat in the foreground. |
 | `farm_hide_people` | boolean | `true` |  | While a farm photo is taken, remove avatars and in-camera UI from the camera layers so that no people appear in the picture. They are switched back on afterwards. |
+| `farm_alert_scans` | integer | `2` |  | Farm alerts: how many consecutive photos must show unplanted or still-dry cells in a plot before an alert is raised. |
+| `farm_alert_toast` | boolean | `true` |  | Also show farm alerts as Windows toast notifications (the dashboard badge is always shown). |
 | `farm_shot_foreground_only` | boolean | `true` |  | Take farm photos only while VRChat is already in the foreground (while it is behind other windows the tool just waits and never takes focus or moves the cursor). |
 | `farm_shot_wait_seconds` | number | `60` |  | Maximum wait (seconds) for a break right after a catch before fishing is paused for a photo. |
 | `farm_shot_crop` | number[] | `[0.0, 0.0, 1.0, 1.0]` |  | Crop of the farm photo as [left, top, right, bottom] screen ratios ([0,0,1,1] is the whole frame). |
