@@ -49,8 +49,12 @@ public sealed class Fisher
     double tState = EventLog.Now();
     Attempt? attempt;
     Bobber? bobber;
-    int auditTick;
+    int auditTick, learnTick;
+    readonly Dictionary<(int, int), (int Count, double Last)> decoyHeat = [];     // 自分のウキではない候補(他人のウキ・アバターの赤白)が見えた升目と、その回数・最後に見た時刻
+    int decoyLogTick;
+    (int X, int Y)? castFrom;                        // 投げのクリックを送った時点のウキ位置(竿先にぶら下がったウキ)。ここから動かず静止したなら投げは効いていない
     Frame? workFrame;
+    Frame? cur;                                     // いま処理中のフレーム(縮小後)。範囲・倍率はこの大きさに合わせてある
     readonly List<(double X, double Y)> landings = [];     // 釣れたときのウキ位置(画面に対する比率。ウィンドウの大きさが変わっても使える)。自分のウキは毎回ほぼ同じ場所に着水する
     List<(int, int, int, int)> decoys = [];     // 投げる前から画面にあったウキ候補(他人のウキ・アバターの赤白)。投げ後は探索から除く
     (int X, int Y)? lastPos, castOrigin, expectAway, anchorPos;     // anchorPos: 直近に静止を確認した位置(再開後などで本物のウキを優先して探す)
@@ -245,16 +249,35 @@ public sealed class Fisher
 
     /// <summary>投げクリックを送って着水待ちへ。ウキが引く前の位置に残っていれば引けていないので投げない。</summary>
     /// <summary>投げる瞬間に見えているウキ候補は自分のものではない(自分のは投げた後に現れる)ので、位置を覚えて投げ後の探索から外す。</summary>
-    void RememberDecoys()
+    void RememberDecoys(Bobber? tip)
     {
-        decoys = [];
-        if (frame is not { } f) return;
+        if (cur is not { } f) return;
+        LearnDecoys(f, tip);
+    }
+
+    /// <summary>
+    /// 今見えているウキ候補が多い場所(他人のウキ・アバターの赤白)を、升目ごとの回数で覚える(竿先にぶら下がった自分のウキ tip は除く)。
+    /// 他人のアバターの小物は映ったり消えたり、少しずれたりするので、投げる瞬間だけでなく、しばらく積み重ねて、周りの升目ごと除外する。
+    /// </summary>
+    void LearnDecoys(Frame f, Bobber? tip)
+    {
         var r = rois.Bobber;
         var region = ((int)(r[0] * f.Width), (int)(r[1] * f.Height), (int)(r[2] * f.Width), (int)(r[3] * f.Height));
         int pad = (int)(cfg.BobberDecoyPad * scale);
+        int cell = Math.Max(8, (int)(cfg.BobberDecoyCell * scale));
+        foreach (var k in decoyHeat.Where(kv => Now - kv.Value.Last > cfg.BobberDecoyKeepSeconds).Select(kv => kv.Key).ToList()) decoyHeat.Remove(k);
+        var seen = new HashSet<(int, int)>();
         foreach (var c in BobberDetector.Candidates(f, region, null, exclude: ExcludeRects(f.Width, f.Height), scale: scale, p: BobberParams.From(cfg)))
-            decoys.Add((c.X - c.W / 2 - pad, c.Y - pad, c.X + c.W / 2 + pad, c.Y + c.H + pad * 3));
-        if (decoys.Count > 0) Log.Info($"投げる前から見えているウキ候補 {decoys.Count} 件を除外します");
+        {
+            if (tip is { } t && Math.Abs(c.X - t.X) <= pad * 2 && Math.Abs(c.Y - t.Y) <= pad * 4) continue;
+            if (expectAway is { } ea && Math.Abs(c.X - ea.X) <= pad * 2 && Math.Abs(c.Y - ea.Y) <= pad * 2) continue;     // 引けずに水中に残った自分のウキ
+            seen.Add((c.X / cell, c.Y / cell));
+        }
+        foreach (var key in seen) decoyHeat[key] = (decoyHeat.TryGetValue(key, out var h) ? Math.Min(h.Count + 1, 50) : 1, Now);
+        // 2 回以上見えた升目と、その周囲 1 升を除外の範囲にする
+        decoys = decoyHeat.Where(kv => kv.Value.Count >= 2)
+            .Select(kv => ((kv.Key.Item1 - 1) * cell, (kv.Key.Item2 - 1) * cell, (kv.Key.Item1 + 2) * cell, (kv.Key.Item2 + 2) * cell)).ToList();
+        if (decoys.Count > 0 && ++decoyLogTick % 10 == 1) Log.Info($"他人のウキ・アバターの赤白とみなして除外する範囲 {decoys.Count} 升");
     }
 
     void StartCast(double now, Bobber? b)
@@ -272,7 +295,8 @@ public sealed class Fisher
             return;
         }
         if (!Click(ClickKind.Cast)) return;
-        RememberDecoys();
+        RememberDecoys(b);
+        castFrom = b is null ? null : (b.X, b.Y);
         castDt = Now - lastReelAt;
         expectAway = null;
         dip = NewDip();
@@ -428,9 +452,17 @@ public sealed class Fisher
         if (state is SWaitBite or SCastWait) ex.AddRange(decoys);
         // 近くを通る他人のアバターの赤い物体が追跡位置を奪うので、直近に静止を確認した位置の周辺を最優先で探す
         // 水面のウキ(細い)を先に探す。竿先の大きいウキや他人の大きな物体が白玉の多さで勝って、本物を隠すのを防ぐ
-        int narrow = (int)(cfg.RodTipBobberWidth * scale);
+        // 幅では絞らない: 視点や距離によって水面のウキも竿先のウキと同じ幅に写る。他人のウキ・アバターは投げる前の位置(decoys)で除く
+        int narrow = int.MaxValue;
         var bp = BobberParams.From(cfg);
-        var b = anchorPos is { } a ? BobberDetector.Detect(f, region, a, exclude: ex, scale: scale, p: bp, maxWidth: narrow) : null;
+        // 投げた直後は、竿先から飛んでいく自分のウキを追う。画面の別の場所に現れる他人のウキ・アバターの小物には乗り換えない
+        Bobber? b = null;
+        if (state is SCastWait && castFrom is { } cf0 && Now - tState < cfg.CastLostSeconds)
+        {
+            if (!castMoved) b = BobberDetector.Detect(f, region, cf0, radius: 200, exclude: ex, scale: scale, p: bp, maxWidth: narrow);
+            else if (lastPos is { } lp0) b = BobberDetector.Detect(f, region, lp0, radius: 200, exclude: ex, scale: scale, p: bp, maxWidth: narrow);
+        }
+        b ??= anchorPos is { } a ? BobberDetector.Detect(f, region, a, exclude: ex, scale: scale, p: bp, maxWidth: narrow) : null;
         if (b is null && lastPos is { } n) b = BobberDetector.Detect(f, region, n, exclude: ex, scale: scale, p: bp, maxWidth: narrow);
         // 追跡中の物が他人のアバターの赤白(静止していて沈みも出ない偽物)だと、近傍探索は永久にそれを返す。時々全体を探し直し、明らかに本物らしい物があれば乗り換える
         // 直近に沈みが出ている追跡対象は本物なので乗り換えない(他人のウキの方が点数が高くても、乗り換えで沈み判定が毎回やり直しになり見逃す)
@@ -604,6 +636,7 @@ public sealed class Fisher
         var f = frame;
         if (CaptureSizeStale(f, now)) return;
         f = ToWorkFrame(f);
+        cur = f;
         if ((f.Width, f.Height) != frameSize)
         {
             frameSize = (f.Width, f.Height);
@@ -667,6 +700,7 @@ public sealed class Fisher
             {
                 double wait = recorder.SessionAttempts > 0 ? cfg.RecastDelay : 0.5;
                 // ゲームは直前の引き(釣果)から約 1.8 秒は投げを受け付けない。結果の確定が早いと RecastDelay だけでは足りないので、引きクリックからも数える
+                if (fresh && ++learnTick % 8 == 0) LearnDecoys(f, b);
                 if (now - tState >= wait && now - lastReelAt >= tuner.ReelToCast && now - recorder.LastCaughtAt >= cfg.AfterCatchCastMin && !StartupProbe(now, b)) StartCast(now, b);
                 break;
             }
@@ -685,8 +719,11 @@ public sealed class Fisher
                 if (dip.Armed && b is not null && Math.Abs(b.Y - dip.BaseY) > cfg.BobberNearPx * scale) { Log.Info($"静止の基準 y={dip.BaseY:F0} と現在位置 y={b.Y} がずれているので静止判定をやり直します"); dip = NewDip(); }
                 if (dip.Armed && (castMoved || startupAdopt || now - tState > cfg.CastSettleFallback))
                 {
-                    // 竿先にぶら下がったウキ(幅が水面の約 2 倍)は着水していない。投げのクリックが効かなかったので撮り直して投げ直す
-                    if (dip.BaseW > cfg.RodTipBobberWidth * scale)
+                    // 竿先にぶら下がったウキは着水していない。投げのクリックが効かなかったので撮り直して投げ直す
+                    // 投げる前のウキ位置から動かないまま静止したなら、投げが効いていない(幅は視点で変わるので使わない)
+                    bool stayedAtTip = !castMoved && !startupAdopt && b is not null && castFrom is { } cf
+                        && Math.Abs(b.X - cf.X) <= cfg.BobberNearPx * scale && Math.Abs(b.Y - cf.Y) <= cfg.BobberNearPx * scale;
+                    if (stayedAtTip)
                     {
                         Log.Warn($"ウキが竿先に残っています(幅={dip.BaseW:F0})。投げが不発だったので投げ直します");
                         castFailures++;
@@ -743,7 +780,7 @@ public sealed class Fisher
         startupAdopt = false;
         Log.Info("起動時にウキが見えているため、確認クリックで水中/空中を判定します");
         tArmed = now;
-        NoBite(now, frame!);
+        NoBite(now, cur ?? frame!);
         return true;
     }
 
