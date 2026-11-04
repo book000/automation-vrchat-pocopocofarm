@@ -1,116 +1,120 @@
-# ぽこぽこファーム 釣り自動化
+# automation-vrchat-pocopocofarm
 
-VRChat のワールド「ぽこぽこファーム」の釣りを、画面を見てクリックを送るだけで自動化する。ゲームのメモリや通信には触れない。
+[![CI](https://github.com/book000/automation-vrchat-pocopocofarm/actions/workflows/ci.yml/badge.svg)](https://github.com/book000/automation-vrchat-pocopocofarm/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+
+A Windows tool that automates fishing in the VRChat world "Pocopoco Farm" (the world's own title is in Japanese). It watches the game window, detects the bite, and sends the click through VRChat's OSC input. It does not read game memory or touch network traffic.
 
 ```
-投げる → 着水(ウキ静止)待ち → 「ぴくぴく」検出で即クリック(約40ms) → 結果トースト確認(OCR) → 記録 → 投げ直し
+cast -> wait for the bobber to settle -> detect a dip and reel in -> read the result toast (OCR) -> record -> cast again
 ```
 
+> **Disclaimer.** This is an unofficial personal project and is not affiliated with VRChat or the world's creator. Automating input may violate the terms of the world or of VRChat. Check the rules yourself and use the tool at your own risk.
 
-> **注意**: 非公式の個人ツールで、VRChat 及びワールド制作者とは無関係です。自動操作はワールドや VRChat の規約に触れる可能性があるため、利用は自己責任で、規約を確認したうえで使ってください。ライセンスは [MIT](LICENSE)(同梱 OCR モデルは [NOTICE.md](NOTICE.md))。
+## Features
 
-## 起動
+- **Fast reaction.** Detects the bobber (red stick and white ball) in captured frames and reels in as soon as the first dip is confirmed (by default the first dip; see `pecks_to_reel`).
+- **Works in the background.** Frames come from per-window capture (Windows.Graphics.Capture) and clicks are sent over OSC, so VRChat can sit behind other windows without losing focus or moving your cursor. VRChat must not be minimized.
+- **Every attempt is recorded.** Each reel ends in exactly one outcome (`caught`, `early`, `escaped`, ...) with evidence images. A catch is only counted when its result toast was actually read.
+- **Self-tuning.** Shortens the recast wait, adapts the number of dips before reeling, and adapts the bite-wait timeout from measurements.
+- **Web dashboard.** Live view, success rate, per-fish statistics, attempt history, evidence gallery, pause/resume, and an editable settings page.
+- **Resident service with self-update.** A supervisor restarts the fishing process if it dies and can swap in a newer executable without stopping manually.
+- **Optional farm photos.** Periodically takes a top-down photo of the farm through the in-game camera and analyzes which plots are planted and watered.
 
-単一の exe(.NET 10)で、釣りとダッシュボードが同じプロセスで動く。作り方は [csharp/README.md](csharp/README.md)。
+## Requirements
 
-```powershell
-csharp\dist\pocofarm.exe all --root .    # 釣り+ダッシュボードを常駐(落ちたら自動再起動)。start.bat からも起動できる
-```
+- Windows 11 (22H2 or later recommended; on older builds the yellow capture border cannot be hidden, which does not otherwise affect operation).
+- VRChat desktop mode with OSC enabled (Action Menu -> Options -> OSC -> Enabled).
+- The Japanese language pack for Windows OCR. The game's toasts are Japanese and the primary OCR engine is the Windows one (`ja`).
+- A GPU/driver that supports Direct3D 11 (used by the capture).
+- To build from source: the .NET 10 SDK. A published executable is self-contained and needs no runtime.
 
-| コマンド | 内容 |
+## Quick start
+
+1. Get the executable: download a build from the CI run artifacts, or [build it yourself](docs/development.md#build-test-publish).
+2. Create the working directory for the tool (any folder) and put `pocofarm.exe` there. Runtime files (`config.json`, `data/`) are created relative to the folder passed as `--root`.
+3. Start VRChat, join the world, hold the fishing rod, and face the pond.
+4. Run a first check (optional but recommended):
+
+   ```powershell
+   .\pocofarm.exe doctor
+   ```
+
+5. Start fishing and the dashboard:
+
+   ```powershell
+   .\pocofarm.exe all --root .
+   ```
+
+6. Open `http://localhost:10000/` in a browser.
+
+Press **Pause/Break** to pause and resume. The key works while any window is in the foreground, and no clicks are sent while paused.
+
+## Usage
+
+| Command | Description |
 |---|---|
-| `pocofarm all [--root <dir>]` | 常駐。`run` を子プロセスで起動し、落ちたら再起動する。新しい exe が置かれたら自動で入れ替える |
-| `pocofarm run [--dry-run] [--paused]` | 釣り+ダッシュボードのみ。`--dry-run` はクリックを送らない |
-| `pocofarm doctor` / `setup` | 初回点検 / LAN 公開のファイアウォール設定 |
-| `pocofarm bench-ocr` / `ocr-image` / `capture-test` | OCR の比較、画像 1 枚の OCR、キャプチャ確認 |
-| `pocofarm cleanup` / `init-config` | 証拠画像の掃除 / 既定の config.json 出力 |
+| `pocofarm all [--root <dir>]` | Resident mode. Starts `run` as a child process, restarts it after a crash, and swaps in a newer executable when one appears. |
+| `pocofarm run [--root <dir>] [--host <ip>] [--port <n>] [--dry-run] [--paused]` | Fishing and the dashboard in one process. `--dry-run` sends no clicks; `--paused` starts paused. |
+| `pocofarm doctor [--image <png>]` | Pre-flight check: OS, capture rate, resolution, HUD regions, bobber detection, firewall rule. Never clicks. |
+| `pocofarm setup` | Creates the firewall rule that allows the dashboard to be opened from the LAN (asks for UAC elevation). |
+| `pocofarm init-config` | Writes a `config.json` containing all defaults. |
+| `pocofarm cleanup` | Removes expired or excess evidence images immediately. |
+| `pocofarm capture-test [out.png]` | Captures VRChat for a few seconds and prints size, frame rate, toast OCR, and bobber detection. |
+| `pocofarm ocr-image <png>` | Reads one image with Windows OCR and prints the toast classification. |
+| `pocofarm bench-ocr [dir] [-v]` | Compares the two OCR engines on a directory of sample images (default `tests/fixtures/ocr`). |
 
-使い方の前提: VRChat で釣り竿を持ち、視線を池に向ける。VRChat 側で OSC を有効にしておく(アクションメニュー → オプション → OSC → 有効。ポートは `osc_port`、既定 9000)。
-**Pause/Break キー**(`config.json` の `pause_vk` で変更可)で一時停止/再開を切り替える。他のウィンドウが前面でも効き、一時停止中はクリックも送らない。切替時に Windows トースト通知が出て、ダッシュボードにも「一時停止中」と出る。
+`--root` is the folder that contains `config.json` and `data/`; it defaults to the current directory. See [Operations](docs/operations.md) for running the tool as a long-lived service.
 
-### 背面で動く(OSC 入力)
+## Dashboard
 
-クリックは VRChat の OSC(`/input/UseRight`)で送る。画面はウィンドウ単位のキャプチャで読むため、VRChat が他のウィンドウの後ろにあっても動き、フォーカスもカーソルも奪わない。
+Open `http://<this-pc-ip>:10000/` from the LAN (or `http://localhost:10000/` on the same machine). The page refreshes every 1.5 seconds and shows:
 
-- VRChat を最小化しない(最小化中は画面が取れず、復元のため前面化する)。
-- 画面操作が要るファーム撮影は、VRChat がすでに前面にあるときだけ行う(`farm_shot_foreground_only`、既定 true)。背面の間は撮影を待つだけで、フォーカスもカーソルも奪わない。間隔は `farm_shot_interval`(既定 600 秒、0 で無効)。
-- 実測では、投げ・引きの反応は前面でのマウスクリックと同等(クリック送信から画面が変わるまで中央値で約 100ms)で、釣果の数も差がなかった。
+- run state, success rate, outcome breakdown, per-fish counts, and a catch-rate chart;
+- the live view with the detected bobber and the toast region drawn on it, and the most recent result;
+- the attempt history with reaction time, time to the result toast, the OCR text, and links to evidence images;
+- failure causes over time and success rate by hour;
+- tuning statistics (streaks, percentiles of reaction and wait times, experience per hour, drop rates, and more);
+- attention events (unlinked or unclassified toasts, errors);
+- a settings card to view and edit every setting with its description;
+- pause/resume and data-reset buttons (accepted only from private network addresses). A reset moves the records into `data/archive/` rather than deleting them;
+- the evidence gallery and the log tail.
 
-## 自動調整
+The dashboard's text is in Japanese. The HTTP endpoints are documented in [Operations](docs/operations.md#dashboard-http-api).
 
-手で調整しなくても、実測から次の値を自分で詰める(`config.json` の値が上限・基準で、結果は `data/tuning.json` に残る)。
+If the page cannot be opened from another device, run `pocofarm setup` once. See [Operations](docs/operations.md#lan-access-and-the-firewall).
 
-- **投げ直しの待ち時間**: 引きから次の投げまでの間隔(`reel_to_cast_min`)。ゲームは釣果の直後しばらく投げを受け付けないので、投げが連続で成功するたびに少しずつ縮める(`reel_to_cast_step`、床は `reel_to_cast_floor`)。ウキが竿先に残る不発が出たら、その間隔に余裕を足した値へ戻し、それより短くは試さない。`tune_reel_to_cast` で無効にできる。
-- **引く沈みの回数**: 早すぎが続いたら増やし、成功が続けば基準に戻す。
-- **当たり待ちの打ち切り**: 実測の最大待ち時間の数倍(`no_bite_factor`)に合わせる。
+## Configuration
 
-## ダッシュボード
+Settings live in `config.json` (snake_case keys; missing keys use defaults). Almost every numeric threshold is a setting, and most can be edited from the dashboard's settings card. Coordinates are stored as ratios of the reference resolution (1920x1009) and re-resolved for the real window size, so no tuning is needed when the resolution changes. See the [configuration reference](docs/configuration.md).
 
-`http://<このPCのIP>:10000/`(LAN 内から。同じ PC なら `http://localhost:10000/`)。1.5 秒ごとに更新され、次を表示する。
+## How it works
 
-- 稼働状態、成功率(直近1時間/今回起動)、釣果・失敗の内訳、魚種別、釣果推移グラフ
-- ライブ画面(ウキ検出枠・通知領域付き)、直近の結果
-- 試行履歴(反応時間・結果通知までの時間・OCR 文字列・証拠画像リンク)、結果別フィルタ
-- 失敗の原因別推移(10 分ごと)、時間帯別の成功率(直近 24 時間)
-- 調整・運用の統計(連続成功、反応時間/結果通知/当たり待ちの p50・p95・最大、経験値/時、魚種の出現率とレア間隔、所持数、稼働内訳、OCR 経路、投げ位置別の成功率。計算は `Core/Stats.cs`)
-- 注意イベント(紐付かない通知、未分類通知、エラー)
-- ヘッダーの **一時停止/再開** ボタンと **データリセット** ボタン(LAN 内のアドレスからのみ受け付ける)。リセットは記録を `data/archive/` に退避して 0 から数え直す(削除はしない)
-- 画面証拠ギャラリー(絞り込み可)、ログ末尾
+1. The capture thread receives frames of the VRChat client area.
+2. The bobber detector finds the red stick and white ball; the dip detector decides when the bobber has settled and when it dips.
+3. On a dip the tool sends a click over OSC (`/input/UseRight`) and starts waiting for the result toast.
+4. A background worker keeps reading the toast region with Windows OCR; the PP-OCR engine re-checks incomplete or unclassifiable text.
+5. The result is classified, stored in `data/events.jsonl`, and published to the dashboard; the auto-tuner adjusts timings from the outcome.
 
-LAN から開けない場合は、`pocofarm setup`(または `scripts/setup_firewall.ps1`)を実行する(UAC で管理者承認が必要)。
-起動時の「アクセスを許可しますか」でキャンセルを選ぶと**ブロック規則**が作られ、許可規則より優先されるため。
+Details are in [Architecture](docs/architecture.md).
 
-## 記録(失敗を漏れなく残す仕組み)
+## Documentation
 
-すべて `data/` 以下。
+- [Architecture](docs/architecture.md)
+- [Configuration reference](docs/configuration.md)
+- [Operations](docs/operations.md)
+- [Troubleshooting](docs/troubleshooting.md)
+- [Development](docs/development.md)
+- [Contributing](CONTRIBUTING.md)
 
-記録の取りこぼし検出として、引き/確認クリックの送信数と確定した試行数を 30 秒ごとに突き合わせ、2 回続けてずれたら `audit_mismatch` を記録する(ダッシュボードにも警告)。投げの連続失敗(3 回以上)は Windows トースト通知で知らせる。
+## Troubleshooting
 
-| ファイル | 内容 |
-|---|---|
-| `events.jsonl` | 1 行 1 イベント。`type=attempt` は必ず結果種別 `outcome` を持つ |
-| `fishing.log` | 人間向けテキストログ(5MB×5 世代ローテーション) |
-| `status.json` / `live.jpg` | ダッシュボード用の現在状態とライブ画像 |
-| `evidence/` | 画面証拠(JPEG+同名 JSON)。6 時間・512MB を超えると古い順に自動削除 |
+Quick pointers; the full list is in [docs/troubleshooting.md](docs/troubleshooting.md).
 
-`outcome` の種類:
+- Casts keep failing: face the pond, keep the rod equipped, and make sure OSC is enabled.
+- Nothing is recorded: run `pocofarm doctor` while VRChat is running and fix any `NG` line.
+- The dashboard is unreachable from another device: run `pocofarm setup`.
 
-| outcome | 意味 | 失敗扱い |
-|---|---|---|
-| `caught` | 釣れた(魚名・経験値・所持数つき) | いいえ |
-| `early` | 「まだかかっていません」(早すぎ) | はい |
-| `escaped` | 引く前後に魚に逃げられた | はい |
-| `missed_bite` | 引く前に「逃げられた」が出た = 沈み検出の見逃し(直前の y 推移 `trace` つき) | はい |
-| `unknown` | 引いたが結果トーストを読めなかった(再読取りでも不明) | はい |
-| `cast_failed` | 投げが空振り(視線が池でない通知、またはウキが着水しない) | はい |
-| `no_bite_reset` | 長時間当たりがなく確認クリックで引き直した | いいえ(状態確認) |
+## License
 
-試行に紐付かない通知(`toast_unlinked`)、どれにも当てはまらない文字(`toast_unclassified`)、付随通知(`toast_info`)、ループ内例外(`error`)、状態ずれ(`desync`)も別イベントとして残す。
-成功判定は「結果トーストを読めた」ことが根拠で、読めなければ成功扱いにしない。
-
-## 仕組み(モジュール)
-
-詳しい構成は [csharp/README.md](csharp/README.md)。
-
-| 場所 | 役割 |
-|---|---|
-| `Fishing/Fisher` | 状態機械。投げ→着水待ち→当たり待ち→引く→結果確認。状態ずれの検出と復帰 |
-| `Fishing/` の協調クラス | `AutoTuner`(自動調整)、`AttemptRecorder`(結果の記録)、`ToastReader`(OCR)、`HudMonitor`(レベル・経験値)、`ControlChannel`(停止キー・ダッシュボード操作)、`ClickSender`/`Auditor`(クリックと突き合わせ) |
-| `Vision/` | ウキ検出(`BobberDetector`)と沈み判定(`DipDetector`)。しきい値はすべて設定値 |
-| `Core/Toast` ほか | トースト分類、設定、イベント記録、統計 |
-| `Ocr/` | Windows OCR(主)と PP-OCR(再確認)。選定根拠は `docs/ocr_comparison.md` |
-| `Platform/` | キャプチャ(Windows.Graphics.Capture)、前面化・クリック送信、自動入れ替え |
-| `Farm/` | ファームの定点写真と畑の解析 |
-| `Web/` | ダッシュボード(Kestrel)。画面は `Web/Static/index.html` を exe に埋め込む |
-
-## 実機調査で分かったこと
-
-- 魚が掛かると、ウキが水面下へ約 8px(ウキ幅の半分ほど)沈み、約 0.2 秒ごとに繰り返す。**最初の 1 回で引いて 12/12 釣れた**。早すぎ通知は沈みの前に引いたときに出る。
-- 当たりを逃すと約 3 秒後に「逃げられた…」通知が出て、ウキは水中に残る。
-- 結果トーストは画面左下のヒント枠の**上**に積み重なる。レベルアップ/実績通知が釣果通知を押し出すことがある。
-- 池に向いていない状態で投げると「池の水に向けて投げよう…」が出て投げが空振りする(旧実装で「投げ確認失敗」が多かった主因の一つ)。
-- 空中のウキと水中のウキは見た目では区別しづらいため、起動直後や結果不明のあとは、ウキの動きとトースト有無で状態を判定する。
-
-## 設定
-
-`config.json`(`pocofarm init-config` で既定値を出力)。動作に関わる数値はほぼすべて設定項目で、ダッシュボードの「設定」カードから説明つきで編集できる(一覧は `csharp/src/Pocofarm/Core/Config*.cs`)。範囲は基準解像度(1920x1009)での比率で持ち、実際の画面サイズに合わせて解決し直す(HUD は幅のアンカー+高さ比例のオフセットなので、縦横比が違っても追従する)。ウキ形状などのピクセル基準値も画面高さに比例して拡縮する。1920x1009(16:9)と 1280x953(5:4)で実機確認済み。解像度が変わっても調整不要。
+[MIT](LICENSE). Third-party components, including the embedded OCR models, are listed in [NOTICE.md](NOTICE.md).
