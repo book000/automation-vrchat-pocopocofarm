@@ -20,7 +20,7 @@ The worker runs the Kestrel dashboard on its own threads and the fishing loop (`
 | `Program.cs`, `Cli/` | Entry point and sub-commands: `Supervisor` (resident mode), `RunCommand` (worker), `Diagnostics` (`doctor`, `capture-test`, `ocr-image`, `bench-ocr`), `Maintenance` (`cleanup`, `init-config`, `setup`). |
 | `Core/` | Parts that do not depend on the screen: `Config*.cs` (settings, split by area), `Layout` (per-resolution regions), `Toast` (classification of OCR text), `Events` (the event log), `Stats`, `Status`, `AtomicFile`, `Paths`, `Frame`. |
 | `Vision/` | `BobberDetector` (red stick plus white ball), `DipDetector` (settle and dip decision), `BobberParams`, `ViewMotion` (camera movement detection), `ViewAligner` (view drift measurement for [view recovery](#view-recovery)), `Hud` and `IconFinder`. |
-| `Fishing/` | `Fisher` (the state machine) and its collaborators: `AutoTuner`, `AttemptRecorder`, `ToastReader`, `HudMonitor`, `ControlChannel`, `ClickSender`, `AimRecovery`, `Auditor`, `NekoCollector`, `LoopProfiler`, `EvidenceStore`. |
+| `Fishing/` | `Fisher` (the state machine, a partial class; `FishState`, `DecoyTracker`) and its collaborators: `AutoTuner`, `AttemptRecorder`, `ToastReader`, `HudMonitor`, `ControlChannel`, `ClickSender`, `AimRecovery`, `Auditor`, `NekoCollector`, `LoopProfiler`, `EvidenceStore`. |
 | `Farm/` | Farm photos: `FarmShots` (scheduling and the capture sequence), `SpoutCamera` (opens the in-game camera), `SpoutReceiver` (reads the shared texture), `FarmGrid` (plot analysis), `FarmCalibration` (camera framing), `Osc` (OSC sender). |
 | `Platform/` | Windows integration: `WgcCapture` (Windows.Graphics.Capture), `WinApi` (window lookup, foreground handling, key state), `Imaging`, `Notify` (toast notifications), `Firewall`, `SelfUpdate`. |
 | `Ocr/` | `WinOcr` (Windows OCR), `PpOcr` (PP-OCRv6 through ONNX Runtime), `HudLocator` (finds the "Lv" label to realign the HUD regions). |
@@ -58,6 +58,20 @@ wait_window -> cooldown -> cast_wait -> wait_bite -> result_wait -> cooldown ...
                     ^           |  \_ cast failed ______________________/
                     |___________|
 ```
+
+A sixth state, `needs_attention`, is entered from any state when the tool gives up: `cast_fail_stop_count` casts failed in a row, or the progress watchdog reached its last tier. Nothing is cast until you pause and resume (or press "recast" on the dashboard), which clears it. The code is split into `partial class Fisher` files by concern (`Fisher.Capture.cs`, `.Bobber.cs`, `.Decoys.cs`, `.Sightings.cs`, `.Steps.cs`, `.Result.cs`, `.Aim.cs`, `.Watchdog.cs`, `.Manual.cs`, `.Housekeeping.cs`); the state names are the `FishState` enum, serialized in snake_case.
+
+### Robustness
+
+- **Error containment.** An exception in the loop is logged and the loop continues. After `state_error_limit` errors in a row in the same state the attempt, dip detector and bobber memory are dropped, the state becomes `cooldown`, and an `error` event with `note: state_reset` is written. An attempt is detached before it is finalized, so a failing event write cannot record it twice.
+- **Progress watchdog** (`Fisher.Watchdog.cs`). It triggers when `stall_miss_streak` non-catch outcomes happen in a row, or no fish is caught for `max(stall_no_catch_minutes, stall_wait_p95_factor x p95 bite wait)`. Each trigger writes a `stall` event and moves one tier up, at least `stall_tier_gap_seconds` apart: tier 1 recreates the capture and resets the dip detector, the remembered decoys, learned landings and the peck adaptation; tier 2 sends one confirmation click; tier 3 notifies and enters `needs_attention`. A catch resets the tiers.
+- **Cast failures.** The notification is re-armed at every `cast_fail_alert_count` failures in a row. At `cast_fail_stop_count` casting stops (`needs_attention`).
+- **Result re-read.** When the result toast is not read in time, the RapidOCR re-read runs on the OCR worker thread and `result_wait` polls the task (up to 12 seconds). Running it on the same single worker as normal reads also means the ONNX engine is never used from two threads at once.
+- **Evidence.** Repeated identical failures save evidence for the first and then every 10th occurrence (the events are still written, with `evidence_skipped`). `unclassified_toast` evidence is capped at 500 files.
+
+### Manual control
+
+`data/control.json` accepts `{"cmd": ..., "arg": ..., "amount": ..., "id": <unique number>}` besides `{"paused": bool}`. Commands: `recast`, `reel_now`, `nudge` (arg `left|right|up|down`, at most 200 px, VRChat is brought to the foreground only for the movement), `dry_run` (`on|off`), `pause_after_result` (pause at the next cooldown, i.e. after a result, never mid-reel) and `pause_until` (arg `HH:mm`: pause at the next safe point and resume automatically at that time). `recast`, `reel_now` and `nudge` are rejected (`command_rejected` event) while paused or in dry-run. After a resume the first click is held until a quick check passes (see `resume_check`); whether the rod is held cannot be read from the screen, so it is not checked. The dashboard sends these through `POST /api/control?cmd=...&arg=...`.
 
 Details worth knowing:
 
@@ -135,7 +149,7 @@ Clicks are the OSC input `/input/UseRight` sent over UDP to `127.0.0.1:osc_port`
 
 ### Other event types
 
-`session_start`, `pause`, `resume`, `hud`, `hud_calibrated`, `slow_cycle` (an attempt took longer than `slow_cycle_seconds`), `gap` (the loop stalled), `desync` (state mismatch such as an ineffective reel), `audit_mismatch`, `error`, `neko`, `toast_info`, `toast_unlinked`, `toast_unclassified`, `toast_other`, `farm_scan` and `farm_calibration`. Every line of `data/events.jsonl` has `ts` (ISO 8601 with offset) and `type`.
+`session_start`, `pause`, `resume`, `stall`, `needs_attention`, `attention_cleared`, `lost_dip`, `command`, `command_rejected`, `dry_run`, `pause_scheduled`, `resume_check`, `hud`, `hud_calibrated`, `slow_cycle` (an attempt took longer than `slow_cycle_seconds`), `gap` (the loop stalled), `desync` (state mismatch such as an ineffective reel), `audit_mismatch`, `error`, `neko`, `toast_info`, `toast_unlinked`, `toast_unclassified`, `toast_other`, `farm_scan` and `farm_calibration`. Every line of `data/events.jsonl` has `ts` (ISO 8601 with offset) and `type`.
 
 ## Farm photos
 

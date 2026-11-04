@@ -35,6 +35,12 @@ The game shows a notice asking you to throw towards the pond water when the view
 - During a correction (a few seconds) VRChat takes the foreground and the mouse moves; the previous window and cursor position are restored afterwards. Set `aim_recover` to `false` if this gets in the way of what you do on the PC.
 - Another cause is the bobber staying at the rod tip: the cast click arrived while the game still ignored casts. The auto-tuner raises the reel-to-cast wait on its own after such failures. On slow machines raise `reel_to_cast_min` or `reel_to_cast_max`.
 
+## The state is `needs_attention`
+
+The tool stopped casting on purpose: either `cast_fail_stop_count` casts failed in a row, or the progress watchdog could not recover (`stall` events in `data/events.jsonl` show the tiers it tried). Check that the view is on the pond, the rod is held and nothing covers the screen, then pause and resume from the dashboard (or press "recast") to clear it. A notification is raised when this state starts.
+
+Early pulls caused by the bobber merely disappearing are logged as `lost_dip` events with the recent bobber trace. If they show a flickering detection, `lost_dip_guard` can reject those dips (off by default, not proven on recorded traces).
+
 ## The bobber is not detected
 
 - Run `pocofarm capture-test out.png` and open `out.png`; it prints the detection result and its time. The live image on the dashboard also draws the detected bobber.

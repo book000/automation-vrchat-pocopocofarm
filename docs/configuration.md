@@ -77,6 +77,19 @@ Casting, waiting, reeling, recasting, and the automatic adjustment of those timi
 | `trace_length` | integer | `120` |  | Number of frames of bobber-position history kept for missed-bite analysis. |
 | `attempt_trace_length` | integer | `60` |  | Number of frames of bobber-position history attached to an attempt record (at reel time). |
 | `evidence_trace_length` | integer | `90` |  | Number of frames of bobber-position history attached to a failure record. |
+| `state_error_limit` | integer | `5` |  | Number of loop errors in the same state before the current attempt is dropped and the tool returns to `cooldown` (an `error` event with `note: state_reset` is written). |
+| `cast_fail_stop_count` | integer | `10` |  | Cast failures in a row after which casting stops and the state becomes `needs_attention` (0 never stops). A notification is raised at every `cast_fail_alert_count` failures before that. |
+| `stall_watchdog` | boolean | `true` |  | Enable the progress watchdog (staged recovery when nothing is being caught). |
+| `stall_miss_streak` | integer | `15` |  | Non-catch outcomes in a row that count as a stall. |
+| `stall_no_catch_minutes` | number | `15` |  | Minutes without a catch that count as a stall (lower bound; `stall_wait_p95_factor` times the observed p95 bite wait is used if longer). |
+| `stall_wait_p95_factor` | number | `8` |  | Multiplier on the 95th percentile of observed bite waits for the no-catch limit. |
+| `stall_tier_gap_seconds` | number | `120` |  | Minimum seconds before the watchdog moves to the next tier. |
+| `resume_check` | boolean | `true` |  | Before the first click after a resume, check that the VRChat window exists, is not minimized and the capture is fresh. |
+| `resume_require_foreground` | boolean | `false` |  | Also require VRChat to be the foreground window in the resume check (OSC works in the background, so this is normally unnecessary). |
+| `resume_frame_max_age` | number | `1` |  | Resume check: clicks are held while the latest captured frame is older than this many seconds. |
+| `lost_dip_guard` | boolean | `false` |  | Experimental. Reject a "dip" that is only the bobber disappearing unless it was visible in enough of the frames before it vanished. Off by default because the recorded traces could not show that it helps. |
+| `lost_dip_guard_frames` | integer | `30` |  | Lost-dip guard: number of frames before the loss that are examined. |
+| `lost_dip_guard_seen` | integer | `20` |  | Lost-dip guard: minimum number of those frames in which the bobber was visible. |
 
 ## View recovery
 
