@@ -72,7 +72,8 @@ public static class BobberDetector
             // 白玉の重心が赤い棒の真下付近にあること(髪飾りなど横にずれた白を除く)
             if (Math.Abs(colSum / (double)cols + px0 - (minX + cw / 2.0)) > Math.Max(p.WhiteCenterTol * scale, cw)) continue;
 
-            var cand = new Bobber(minX + ox + cw / 2, minY + oy, cw, ch, wc, wc);
+            // 白だけで競うと、髪飾りや服の白が多い他人のアバターが本物に勝つ。赤い棒の面積も加点して、ウキらしい(白+太い赤)ものを選ぶ
+            var cand = new Bobber(minX + ox + cw / 2, minY + oy, cw, ch, wc, wc + 8 * area);
             if (best is null || cand.Score > best.Score) best = cand;
         }
         return best;

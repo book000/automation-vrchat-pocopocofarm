@@ -49,6 +49,7 @@ public sealed class Fisher
     double tState = EventLog.Now();
     Attempt? attempt;
     Bobber? bobber;
+    int auditTick;
     (int X, int Y)? lastPos, castOrigin, expectAway, anchorPos;     // anchorPos: 直近に静止を確認した位置(再開後などで本物のウキを優先して探す)
     bool castMoved;
     double castLastSeen;
@@ -386,6 +387,19 @@ public sealed class Fisher
         var bp = BobberParams.From(cfg);
         var b = anchorPos is { } a ? BobberDetector.Detect(f, region, a, exclude: ex, scale: scale, p: bp, maxWidth: narrow) : null;
         if (b is null && lastPos is { } n) b = BobberDetector.Detect(f, region, n, exclude: ex, scale: scale, p: bp, maxWidth: narrow);
+        // 追跡中の物が他人のアバターの赤白(静止していて沈みも出ない偽物)だと、近傍探索は永久にそれを返す。時々全体を探し直し、明らかに本物らしい物があれば乗り換える
+        if (b is not null && state is SWaitBite or SCastWait && ++auditTick % cfg.BobberAuditFrames == 0)
+        {
+            var g = BobberDetector.Detect(f, region, null, exclude: ex, scale: scale, p: bp, maxWidth: narrow);
+            if (g is not null && g.Score > b.Score * cfg.BobberSwitchRatio && Math.Abs(g.X - b.X) + Math.Abs(g.Y - b.Y) > cfg.BobberNearPx * scale * 2)
+            {
+                Log.Warn($"追跡中のウキ候補 ({b.X},{b.Y}) 点={b.Score} より ({g.X},{g.Y}) 点={g.Score} が本物らしいので乗り換えます");
+                anchorPos = null; lastPos = null; castOrigin = null; startupAdopt = true;
+                dip = NewDip();
+                SetState(SCastWait, "ウキ候補の乗り換え→再静止待ち");
+                return g;
+            }
+        }
         b ??= BobberDetector.Detect(f, region, null, exclude: ex, scale: scale, p: bp, maxWidth: narrow);
         return b ?? BobberDetector.Detect(f, region, null, exclude: ex, scale: scale, p: bp);
     }
