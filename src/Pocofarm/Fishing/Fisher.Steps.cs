@@ -39,7 +39,7 @@ public sealed partial class Fisher
     void OnArmed(double now)
     {
         tArmed = now;
-        castFailures = 0; castAlerted = false;
+        castFailures = 0; alertedTier = 0;
         castVerified = castVerified || castMoved;
         if (castVerified) unverifiedWait = cfg.UnverifiedWait;
         startupAdopt = false;
@@ -111,6 +111,7 @@ public sealed partial class Fisher
                             tState = Now + CastFailBackoff();
                             AlertCastFailures();
                         }
+                        EscalateCastFailures();
                         return;
                     }
                     OnArmed(now);
@@ -140,8 +141,11 @@ public sealed partial class Fisher
                 break;
             }
             case FishState.ResultWait:
-                FinishResult(now, f);
+                if (attempt is null) SetState(FishState.Cooldown, "result_lost");      // 確定処理中の例外で試行が外れた
+                else FinishResult(now, f);
                 break;
+            case FishState.NeedsAttention:
+                break;      // 人が確認するまで投げない(一時停止→再開で解除)
         }
     }
 

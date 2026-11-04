@@ -14,6 +14,7 @@ public sealed class AttemptRecorder(Config cfg, EventLog events, Status status, 
     static double Now => EventLog.Now();
 
     double lastAttemptAt;
+    readonly EvidenceThrottle evidenceThrottle = new();
 
     public FinalToast? LastFinal { get; private set; }
     public double LastCaughtAt { get; private set; } = -1e9;
@@ -22,6 +23,10 @@ public sealed class AttemptRecorder(Config cfg, EventLog events, Status status, 
 
     /// <summary>釣れないまま続いた失敗の数(釣れたら 0。当たりなしの引き直しは数えない)。視点やウキの見え方が変わったときに気づくため。</summary>
     public int MissStreak { get; private set; }
+
+    /// <summary>人が確認して再開したとき、失敗の連続数を数え直す。</summary>
+    public void ResetMissStreak() { MissStreak = 0; status.Set("miss_streak", 0); }
+
 
     /// <summary>試行結果を記録して、書き込んだ項目を返す。pecksSeen は試行に紐付かない記録(a が null)で使う沈みの回数。</summary>
     public Dictionary<string, object?> Record(string outcome, Toast? toast, Frame? f, Attempt? a, string note, int pecksSeen, Dictionary<string, object?>? extra = null)
@@ -41,8 +46,10 @@ public sealed class AttemptRecorder(Config cfg, EventLog events, Status status, 
             ["bobber_w"] = a is { BaseW: > 0 } ? (int)Math.Round(a.BaseW) : null,
         };
         if (extra is not null) foreach (var kv in extra) fields[kv.Key] = kv.Value;
-        if (f is not null) fields["evidence"] = saveEvidence(f, $"{outcome}_{aid}", new { attempt = aid, outcome, ocr = fields["ocr"] });
-        if (a?.FrameClick is { } fc && outcome != "caught")
+        bool keepEvidence = evidenceThrottle.Keep(outcome);
+        if (!keepEvidence) fields["evidence_skipped"] = true;
+        if (f is not null && keepEvidence) fields["evidence"] = saveEvidence(f, $"{outcome}_{aid}", new { attempt = aid, outcome, ocr = fields["ocr"] });
+        if (a?.FrameClick is { } fc && outcome != "caught" && keepEvidence)
             fields["evidence_click"] = saveEvidence(fc, $"{outcome}_{aid}_click", new { attempt = aid, trace = a.Trace });
         events.Write("attempt", fields);
         // 失敗扱いにならないまま時間だけ失う異常(投げ無視などで当たり待ちが長引く)を拾う。一時停止明けは数えない

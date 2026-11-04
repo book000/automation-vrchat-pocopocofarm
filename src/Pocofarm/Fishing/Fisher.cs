@@ -70,7 +70,7 @@ public sealed partial class Fisher
         get => failStreak;
         set { failStreak = value; status.Set("cast_fail_streak", value); }
     }
-    bool castAlerted;
+    int alertedTier;      // 通知済みの段階(連続失敗数 ÷ 通知回数)。段階が上がるたびに通知し直す
     int fpsN;
     double fpsT = EventLog.Now(), fps;
     readonly LinkedList<(double T, int Y, int W)> trace = new();   // 見逃し調査用

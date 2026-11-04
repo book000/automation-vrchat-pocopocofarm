@@ -28,6 +28,9 @@ public sealed partial class Fisher
         ForgetStaleView(outcome);
         return fields;
     }
+    /// <summary>OCR スレッドでの再読取りを待つ上限[秒]。これを過ぎたら読めなかったものとして unknown にする。</summary>
+    const double RecoverWaitMax = 12.0;
+
     /// <summary>結果待ちの打ち切り判定。トースト確定か、タイムアウト時の再読取りと unknown 記録。</summary>
     void FinishResult(double now, Frame f)
     {
@@ -42,7 +45,23 @@ public sealed partial class Fisher
         }
         else if (waited > (a.Probe ? cfg.ProbeResultTimeout : cfg.ResultTimeout) && now > a.InfoUntil)
         {
-            best = reader.Recover(a);
+            // 再読取りは OCR スレッドで行い、終わるまで結果待ちを続ける(主ループを止めない)
+            if (!a.RecoveryTried)
+            {
+                a.RecoveryTried = true;
+                a.RecoveryStarted = now;
+                a.Recovery = reader.RecoverAsync(a);
+            }
+            if (a.Recovery is { } rec)
+            {
+                if (!rec.IsCompleted && now - a.RecoveryStarted < RecoverWaitMax) return;
+                if (rec.IsCompletedSuccessfully)
+                {
+                    best = rec.Result.Toast;
+                    foreach (var k in rec.Result.Info) if (!a.Info.Contains(k)) a.Info.Add(k);
+                }
+                else if (rec.IsFaulted) Log.Exception("再読取り例外", rec.Exception!.GetBaseException());
+            }
             if (best is not null) a.Engine = "rapidocr再読取";
             if (best is null && a.Info.Count > 0)
             {
@@ -53,6 +72,8 @@ public sealed partial class Fisher
             done = true;
         }
         if (!done) return;
+        // 確定処理の途中で例外が出ても、次の周回で同じ試行を二重に記録しない(先に外す)
+        attempt = null;
         if (best is null && a.Probe)
         {
             // 水中か空中か不明なまま引いたが何も出なかった = 空中で投げ動作になった
@@ -82,6 +103,7 @@ public sealed partial class Fisher
         if (outcome == "caught" && !a.Probe && a.PosBefore is { } lp) { landings.Add((lp.X / (double)f.Width, lp.Y / (double)f.Height)); if (landings.Count > 15) landings.RemoveAt(0); }
         if (outcome == "caught" && !a.Probe && castFailures == 0) aim.NoteCatch(f, now);      // 視点が合っていた証拠の画面を、補正の基準にする
         tuner.OnOutcome(outcome);
+        if (outcome == "caught") NoteProgress();
         attempt = null;
         SetState(FishState.Cooldown, outcome);
     }

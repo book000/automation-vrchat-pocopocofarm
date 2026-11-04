@@ -85,6 +85,21 @@ public sealed class AutoTuner
         if (waitSamples.Count > cfg.BiteWaitSamples) waitSamples.Dequeue();
     }
 
+    /// <summary>当たり待ち実測の 95 パーセンタイル。実測が 10 件に満たなければ null。</summary>
+    public double? WaitP95()
+    {
+        if (waitSamples.Count < 10) return null;
+        var s = waitSamples.Order().ToList();
+        return s[Math.Min(s.Count - 1, (int)Math.Ceiling(s.Count * 0.95) - 1)];
+    }
+
+    /// <summary>引く回数の調整と投げ待ちの学習を初期値へ戻す(進行監視の復旧用)。</summary>
+    public void ResetAdaptive()
+    {
+        PecksToReel = cfg.PecksToReel;
+        earlyStreak = 0; caughtStreak = 0;
+    }
+
     /// <summary>当たり待ちの打ち切り秒数。実測の最大待ちの数倍(下限と上限は設定値)。打ち切っても確認クリックで引くので、取りこぼしにはならない。</summary>
     public double BiteTimeout()
     {

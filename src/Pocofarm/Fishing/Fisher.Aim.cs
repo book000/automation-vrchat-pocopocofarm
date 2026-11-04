@@ -20,17 +20,30 @@ public sealed partial class Fisher
             tState = Now + CastFailBackoff();
             AlertCastFailures();
         }
+        EscalateCastFailures();
     }
 
     /// <summary>連続失敗の待ち時間。3 回目から倍々に延ばし、<see cref="Config.CastFailPause"/> の 6 倍で頭打ちにする。</summary>
     double CastFailBackoff() => cfg.CastFailPause * Math.Min(6.0, 1 << Math.Min(3, Math.Max(0, castFailures - cfg.CastFailAlertCount)));
 
-    /// <summary>投げ失敗が続いたら、画面を見ていなくても気づけるよう連続の最初の 1 回だけ通知する。</summary>
+    /// <summary>
+    /// 投げ失敗が続いたら、画面を見ていなくても気づけるよう通知する。失敗数が通知回数の倍数ごとの段階に上がるたびに 1 回ずつ通知し直す。
+    /// </summary>
     void AlertCastFailures()
     {
-        if (castAlerted || AimRecoverDue) return;      // 視点補正を試す前は通知しない(直れば通知は要らない。直らなければ補正のあとに通知する)
-        castAlerted = true;
-        Notify.Toast("ぽこぽこファーム", "投げが連続で失敗しています。視線を池に向けてください");
+        int tier = castFailures / Math.Max(1, cfg.CastFailAlertCount);
+        if (tier <= alertedTier || AimRecoverDue || CastFailStopDue) return;      // 視点補正を試す前は通知しない(直れば通知は要らない。直らなければ補正のあとに通知する)
+        alertedTier = tier;
+        Notify.Toast("ぽこぽこファーム", $"投げが連続で失敗しています({castFailures}回)。視線を池に向けてください");
+    }
+
+    bool CastFailStopDue => cfg.CastFailStopCount > 0 && castFailures >= cfg.CastFailStopCount;
+
+    /// <summary>連続失敗が止める回数に達したら、投げを止めて人の確認を待つ。</summary>
+    void EscalateCastFailures()
+    {
+        if (CastFailStopDue && state != FishState.NeedsAttention)
+            EnterNeedsAttention($"投げ失敗が{castFailures}回続いたため投げを止めました。視線を池に向けて、一時停止→再開してください");
     }
 
     /// <summary>連続失敗が閾値に達していて、この失敗数ではまだ視点補正を試していない。</summary>
@@ -68,7 +81,7 @@ public sealed partial class Fisher
         lastTick = Now;      // 補正に数秒かかるので、処理の途切れ(gap)と誤認させない
         if (result == AimRecoverResult.Aligned)
         {
-            castFailures = 0; castAlerted = false;
+            castFailures = 0; alertedTier = 0;
             status.Set("message", "");
             SetState(FishState.Cooldown, "aim_recovered");
             return true;
@@ -90,5 +103,6 @@ public sealed partial class Fisher
         SetState(FishState.Cooldown, "cast_failed");
         if (castFailures >= cfg.CastFailAlertCount) tState = Now + CastFailBackoff();
         dip = NewDip();
+        EscalateCastFailures();
     }
 }

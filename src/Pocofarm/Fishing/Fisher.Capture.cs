@@ -69,11 +69,12 @@ public sealed partial class Fisher
         int errCount = 0; double lastErr = 0;
         while (!stop.IsCancellationRequested)
         {
-            try { Tick(); errCount = 0; }
+            try { Tick(); errCount = 0; sameStateErrors = 0; }
             catch (Exception ex)
             {
                 errCount++;
                 Log.Exception("ループ内エラー", ex);
+                ContainError(ex);
                 if (Now - lastErr > 10) { events.Write("error", ("message", ex.Message), ("state", state.Wire())); lastErr = Now; }
                 if (errCount >= 5 && cap is not null) { cap.Dispose(); cap = null; }
                 Thread.Sleep((int)(Math.Min(2.0, 0.2 * errCount) * 1000));
@@ -89,6 +90,7 @@ public sealed partial class Fisher
         tState += stopped; tArmed += stopped; castLastSeen += stopped;
         // 停止中に手動で釣り竿を操作されたかもしれない。ウキが水中か空中か分からないので、短い待ちで確認クリックに回す
         castVerified = false; unverifiedWait = cfg.ResumeWait;
+        ClearAttention("resume");
         AfterGap(0.0);
     }
 

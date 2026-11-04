@@ -21,6 +21,9 @@ internal sealed class DecoyTracker
     /// <summary>覚えている升目の数。</summary>
     public int CellCount => heat.Count;
 
+    /// <summary>覚えた升目も除外矩形もすべて捨てる。</summary>
+    public void Clear() { heat.Clear(); Rects = []; staleStreak = 0; }
+
     /// <summary>
     /// 今見えているウキ候補を升目ごとに積み上げ、除外矩形を作り直す。
     /// tip(竿先の自分のウキ)と expectAway(引けずに水中に残った自分のウキ)の近くは数えない。

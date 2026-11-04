@@ -22,5 +22,8 @@ public sealed class Attempt(int id, double tDip, double tClick, (int X, int Y)? 
     public string PartialNote { get; set; } = "";
     public string Engine { get; set; } = "";          // 結果を確定させた OCR 経路
     public double TArmed { get; set; }                 // 着水静止から最初の沈みまでの待ち時間を測る起点
-    public double BaseW { get; set; }                  // 引いたときのウキ幅(投げ位置の遠近の目安)
+    public Task<RecoverResult>? Recovery { get; set; }  // OCR スレッドでの再読取り(進行中)
+    public double RecoveryStarted { get; set; }
+    public bool RecoveryTried { get; set; }
+    public double BaseW { get; set; }                 // 引いたときのウキ幅(投げ位置の遠近の目安)
 }

@@ -10,6 +10,7 @@ public enum FishState
     CastWait,
     WaitBite,
     ResultWait,
+    NeedsAttention,
 }
 
 public static class FishStateExtensions
