@@ -8,6 +8,9 @@ public sealed class Status(string path)
 {
     static readonly JsonSerializerOptions Opt = new() { Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping };
 
+    /// <summary>起動時の自己点検など、Fisher 以外が status.json に載せたい項目。Flush のたびに Data へ混ぜる。</summary>
+    public static readonly Dictionary<string, object?> Extra = [];
+
     readonly object gate = new();
     double last;
 
@@ -32,6 +35,7 @@ public sealed class Status(string path)
         byte[] bytes;
         lock (gate)
         {
+            lock (Extra) foreach (var (k, v) in Extra) Data[k] = v;
             Data["heartbeat"] = now;
             bytes = JsonSerializer.SerializeToUtf8Bytes(Data, Opt);
         }
