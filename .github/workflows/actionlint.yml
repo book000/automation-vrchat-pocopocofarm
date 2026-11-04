@@ -1,0 +1,14 @@
+name: Actionlint with reviewdog
+
+on:
+  push:
+    branches:
+      - main
+      - master
+  pull_request:
+  merge_group:
+
+jobs:
+  actionlint:
+    name: Actionlint with reviewdog
+    uses: book000/templates/.github/workflows/reusable-actionlint.yml@master

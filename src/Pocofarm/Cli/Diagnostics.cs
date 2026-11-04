@@ -102,7 +102,7 @@ public static class Diagnostics
     /// <summary>固定サンプル(tests/fixtures/ocr)で各エンジンの分類正答数と平均時間を測る。</summary>
     public static int BenchOcr(string[] args)
     {
-        var dir = args.Length > 1 ? args[1] : Path.Combine("csharp", "tests", "fixtures", "ocr");
+        var dir = args.Length > 1 ? args[1] : Path.Combine("tests", "fixtures", "ocr");
         var files = Directory.GetFiles(dir, "*.png").Order().ToList();
         var fish = new Config().KnownFish;
         IOcr[] engines = [new WinOcr(), new PpOcr()];

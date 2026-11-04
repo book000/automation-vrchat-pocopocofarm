@@ -1,19 +1,18 @@
-# 実行時データ(端末ごと)
+# Runtime data (per machine)
 data/
 config.json
 
-# ビルド成果物
-csharp/**/bin/
-csharp/**/obj/
-csharp/dist/
-csharp/run/
+# Build output
+bin/
+obj/
+artifacts/
 *.new.exe
 *.new.exe.tmp
 *.old
 
-# テスト・IDE
-.pytest_cache/
+# Tests / IDE
 TestResults/
 .vs/
+.idea/
 *.user
 *.suo
