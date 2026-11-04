@@ -69,6 +69,10 @@ public sealed partial class Config
     [Desc("進行監視: 当たり待ち実測の 95 パーセンタイルに掛ける倍率")] public double StallWaitP95Factor { get; set; } = 8.0;
     [Desc("進行監視: 次の段階へ進むまでの最短秒数")] public double StallTierGapSeconds { get; set; } = 120;
 
+    [Desc("ウキを見失っただけの「沈み」を採用する前に、直前にウキが十分見えていたかを確かめる(実測で効果を確認できていないため既定は無効)")] public bool LostDipGuard { get; set; } = false;
+    [Desc("見失い沈みの確認: 見失う直前のこのフレーム数を調べる")] public int LostDipGuardFrames { get; set; } = 30;
+    [Desc("見失い沈みの確認: 調べたフレームのうちウキが見えていた数がこれ未満なら、見失い沈みを採用しない")] public int LostDipGuardSeen { get; set; } = 20;
+
     [Desc("一時停止から再開するとき、最初のクリックの前に VRChat の状態を確認する")] public bool ResumeCheck { get; set; } = true;
     [Desc("再開前の確認で VRChat が前面にあることも必須にする(OSC は背面でも届くので通常は不要)")] public bool ResumeRequireForeground { get; set; } = false;
     [Desc("再開前の確認: キャプチャの最新フレームがこの秒数より古ければ保留する")] public double ResumeFrameMaxAge { get; set; } = 1.0;
