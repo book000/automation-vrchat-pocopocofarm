@@ -1,3 +1,18 @@
 {
-  "extends": ["github>book000/templates//renovate/base-public"]
+  "extends": ["github>book000/templates//renovate/base-public"],
+  "lockFileMaintenance": {
+    "enabled": true
+  },
+  "packageRules": [
+    {
+      "description": "xunit.v3 と runner は組み合わせで動くので一緒に上げる",
+      "matchPackageNames": ["xunit.v3", "xunit.runner.visualstudio"],
+      "groupName": "xunit"
+    },
+    {
+      "description": "Vortice.* は同じバージョンで揃える",
+      "matchPackageNames": ["Vortice.Direct3D11", "Vortice.DXGI"],
+      "groupName": "Vortice"
+    }
+  ]
 }

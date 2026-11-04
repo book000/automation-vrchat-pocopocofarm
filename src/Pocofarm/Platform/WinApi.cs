@@ -46,7 +46,7 @@ public static partial class WinApi
     [LibraryImport("winmm.dll")] private static partial uint timeBeginPeriod(uint ms);
 
     /// <summary>Thread.Sleep の精度を 1ms にする(既定は約 15ms で、4ms ループが鈍る)。</summary>
-    public static void HighResolutionTimer() => timeBeginPeriod(1);
+    public static void HighResolutionTimer() { _ = timeBeginPeriod(1); }
 
     /// <summary>ハンドルが今も生きた可視ウィンドウか。FindWindow と違い他プロセスへメッセージを送らないので軽い。</summary>
     public static bool IsAlive(nint h) => h != 0 && IsWindow(h) && IsWindowVisible(h);
