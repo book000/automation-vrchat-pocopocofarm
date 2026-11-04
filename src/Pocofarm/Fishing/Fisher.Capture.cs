@@ -108,11 +108,18 @@ public sealed partial class Fisher
         dip = NewDip();
     }
 
+    double lastGcPauseMs;
+    int lastGen2;
+
     /// <summary>キャプチャ断(UAC表示・画面切替など)の後は、見失い=沈みの誤検出を避けるため当たり待ちを仕切り直す。</summary>
     void AfterGap(double gap)
     {
+        // GC の停止時間と回数は前回の途切れからの増分で出す(起動からの累計だと、毎回大きな値に見えて原因を取り違える)
+        double pause = GC.GetTotalPauseDuration().TotalMilliseconds;
+        int gen2 = GC.CollectionCount(2);
         Log.Warn($"処理が{gap:F1}秒途切れました(キャプチャ断の可能性)。ウキの静止判定をやり直します"
-            + $" [gc pause={GC.GetTotalPauseDuration().TotalMilliseconds:F0}ms gen0/1/2={GC.CollectionCount(0)}/{GC.CollectionCount(1)}/{GC.CollectionCount(2)} frameAge={(cap is null ? -1 : Now - cap.LatestAt):F2}s]");
+            + $" [gc 増分: 停止{pause - lastGcPauseMs:F0}ms gen2 {gen2 - lastGen2}回 frameAge={(cap is null ? -1 : Now - cap.LatestAt):F2}s]");
+        lastGcPauseMs = pause; lastGen2 = gen2;
         events.Write("gap", ("seconds", Math.Round(gap, 1)), ("state", state.Wire()));
         dip = NewDip();
         lastPos = null;
