@@ -83,6 +83,9 @@ public sealed partial class Fisher
             if (g is not null && Math.Abs(g.X - b.X) + Math.Abs(g.Y - b.Y) > cfg.BobberNearPx * scale * 2)
             {
                 Log.Warn($"追跡中のウキ候補 ({b.X},{b.Y}) 点={b.Score} より ({g.X},{g.Y}) 点={g.Score} が本物らしいので乗り換えます");
+                // 乗り換え前の候補は着水位置から外れた別物(竿先のウキなど)。投げ位置の追跡と除外に残すと、次の周回で同じ候補を拾い直して乗り換えが無限に繰り返され、沈み判定が毎回やり直しになる
+                MarkDecoy((b.X, b.Y));
+                castFrom = null;
                 anchorPos = null; lastPos = null; castOrigin = null; startupAdopt = true;
                 dip = NewDip();
                 SetState(FishState.CastWait, "ウキ候補の乗り換え→再静止待ち");
