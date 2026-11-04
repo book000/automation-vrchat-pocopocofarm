@@ -86,6 +86,8 @@ public sealed partial class Fisher
     double lastTick = EventLog.Now();
     readonly ViewMotion viewMotion;
     readonly AimRecovery aim;
+    int aimTriedForMiss;                // 視点補正を試した時点の連続不釣数
+    double lastAimTryAt;
     int aimTriedFor;                    // 視点補正を試した時点の連続失敗数(同じ失敗数では 1 回だけ試す)
 
     public Fisher(Config cfg, Paths paths, bool dryRun = false, bool startPaused = false)

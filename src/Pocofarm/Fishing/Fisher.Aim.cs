@@ -47,7 +47,13 @@ public sealed partial class Fisher
     }
 
     /// <summary>連続失敗が閾値に達していて、この失敗数ではまだ視点補正を試していない。</summary>
-    bool AimRecoverDue => cfg.AimRecover && !dryRun && aim.HasReference && castFailures >= cfg.CastFailAlertCount && aimTriedFor < castFailures;
+    bool AimRecoverDue => cfg.AimRecover && !dryRun && aim.HasReference && (castFailures >= cfg.CastFailAlertCount && aimTriedFor < castFailures || MissStreakAimDue);
+
+    /// <summary>
+    /// 投げ失敗ではなく当たり見逃し・早すぎが続くときも、視点が上がって投げが木や看板に当たっているのが原因のことがある。
+    /// 基準画面とのずれを測るだけなら害はない(ずれていなければ動かさない)ので、釣れない結果が 4 回続いたら 30 秒に 1 回まで測る。
+    /// </summary>
+    bool MissStreakAimDue => recorder.MissStreak >= cfg.CastFailAlertCount + 1 && aimTriedForMiss < recorder.MissStreak && Now - lastAimTryAt > 30;
 
     /// <summary>
     /// 視点が池からずれている疑い(連続失敗)があるとき、基準の画面との比較でマウスを動かして戻す。
@@ -56,7 +62,7 @@ public sealed partial class Fisher
     /// </summary>
     bool TryAimRecover(Frame f)
     {
-        aimTriedFor = castFailures;
+        aimTriedFor = castFailures; aimTriedForMiss = recorder.MissStreak; lastAimTryAt = Now;
         if (cap is not { } capture || !WinApi.IsAlive(hwnd)) return false;
         var prevFg = WinApi.ForegroundWindow();
         var cursor = WinApi.CursorPos();
