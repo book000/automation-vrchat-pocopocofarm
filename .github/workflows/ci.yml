@@ -1,0 +1,55 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - main
+      - master
+  pull_request:
+  merge_group:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event_name }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: Build, test and publish (Windows)
+    # ターゲットが net10.0-windows(Windows API・WGC・ONNX Runtime)なので Windows ランナーが必須
+    runs-on: windows-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: 🛎 Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+
+      - name: 🔧 Setup .NET
+        uses: actions/setup-dotnet@0f4a354dd5547a28c70b7853dbd95d5b67886e73 # v6.1.0
+        with:
+          dotnet-version: 10.0.x
+
+      - name: 📦 Restore
+        run: dotnet restore
+
+      - name: 🏗 Build
+        run: dotnet build -c Release --no-restore
+
+      - name: 🧪 Test
+        run: dotnet test -c Release --no-build
+
+      - name: 🚀 Publish (smoke check)
+        run: dotnet publish src/Pocofarm -c Release -r win-x64 --self-contained -o artifacts/publish
+
+      - name: 📤 Upload executable
+        if: ${{ github.event_name == 'push' }}
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: pocofarm-win-x64
+          path: artifacts/publish/pocofarm.exe
+          if-no-files-found: error
+          retention-days: 7
