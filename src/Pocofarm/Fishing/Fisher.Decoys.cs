@@ -15,6 +15,15 @@ public sealed partial class Fisher
         LearnDecoys(f, tip);
     }
 
+    /// <summary>確認クリックで空中だった位置(追っていたのは自分のウキではなかった)を除外の対象にする。</summary>
+    void MarkDecoy((int X, int Y)? pos)
+    {
+        if (pos is not { } p) return;
+        int cell = Math.Max(8, (int)(cfg.BobberDecoyCell * scale));
+        decoyTracker.Mark(p.X, p.Y, (int)(cfg.BobberDecoyPad * scale), cell, Now);
+        Log.Info($"確認クリックで空中だったため、({p.X}, {p.Y}) の候補をウキではないものとして除外します");
+    }
+
     /// <summary>
     /// 今見えているウキ候補が多い場所(他人のウキ・アバターの赤白)を、升目ごとの回数で覚える(竿先にぶら下がった自分のウキ tip は除く)。
     /// 他人のアバターの小物は映ったり消えたり、少しずれたりするので、投げる瞬間だけでなく、しばらく積み重ねて、周りの升目ごと除外する。

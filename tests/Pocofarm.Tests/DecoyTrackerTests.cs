@@ -25,6 +25,16 @@ public class DecoyTrackerTests
     }
 
     [Fact]
+    public void MarkExcludesImmediately_EvenAtTip()
+    {
+        var t = new DecoyTracker();
+        Learn(t, [(105, 105)], tip: (105, 105));      // 追っていた位置は tip 扱いで数えられない
+        Assert.Empty(t.Rects);
+        t.Mark(105, 105, pad: 10, cell: 20, now: 1);
+        Assert.Equal([(80, 80, 140, 140)], t.Rects);
+    }
+
+    [Fact]
     public void TipAndExpectAwayAreIgnored()
     {
         var t = new DecoyTracker();

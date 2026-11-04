@@ -79,6 +79,7 @@ public sealed partial class Fisher
             // 水中か空中か不明なまま引いたが何も出なかった = 空中で投げ動作になった
             RecordAttempt("no_bite_reset", null, f, a, "トーストなし: 空中のウキを投げた");
             attempt = null;
+            MarkDecoy(a.PosBefore);
             dip = NewDip();
             castOrigin = a.PosBefore;       // 空中の位置から離れたら投げ成功
             castMoved = false; startupAdopt = false; expectAway = null;

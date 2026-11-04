@@ -45,6 +45,17 @@ internal sealed class DecoyTracker
     }
 
     /// <summary>
+    /// 自分のウキと思って追っていたが確認クリックで空中だった位置は、動かない別物(葦・ペンの落書き・他人の小物)なので、すぐ除外の対象にする。
+    /// </summary>
+    public void Mark(int x, int y, int pad, int cell, double now)
+    {
+        var key = (x / cell, y / cell);
+        heat[key] = (Math.Max(2, heat.TryGetValue(key, out var h) ? h.Count : 0), now);
+        Rects = heat.Where(kv => kv.Value.Count >= 2)
+            .Select(kv => ((kv.Key.Item1 - 1) * cell, (kv.Key.Item2 - 1) * cell, (kv.Key.Item1 + 2) * cell, (kv.Key.Item2 + 2) * cell)).ToList();
+    }
+
+    /// <summary>
     /// 試行の結果を数える。釣れない結果が <see cref="StaleStreakLimit"/> 回続いたら覚えた升目を捨てて true を返す
     /// (視点が変わると他人のウキの位置も移るため)。除外矩形は次の <see cref="Learn"/> まで残る。
     /// </summary>
