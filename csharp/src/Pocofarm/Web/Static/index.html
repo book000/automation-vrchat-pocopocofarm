@@ -28,6 +28,9 @@ main{display:grid;gap:14px;padding:14px 18px;grid-template-columns:repeat(12,1fr
 .wide{grid-column:span 7} .half{grid-column:span 5} .full{grid-column:1/-1}
 @media (max-width:1100px){.live,.side,.wide,.half{grid-column:1/-1}}
 .live img{width:100%;border-radius:8px;display:block;background:#000}
+.fm.off:not(.open) .fmbody{display:none}
+.fm.off h2{cursor:pointer}
+.fm.off:not(.open) h2{margin:0}
 .fmbody{display:flex;gap:14px;align-items:flex-start;flex-wrap:wrap}
 .fmpic{position:relative;flex:1 1 56%;min-width:0;max-width:760px}
 .fmpic img{width:auto;max-width:100%;max-height:58vh;display:block;border-radius:8px}
@@ -128,7 +131,7 @@ tr.unread td{background:#c2410c33;font-weight:700}
 <main>
   <div id="alertband" class="band" hidden></div>
   <div id="nekobanner" class="nekobanner full" hidden></div>
-  <section class="card full fm">
+  <section class="card full fm" id="fmcard">
     <h2>ファーム定点写真<span class="mute" id="fmmeta" style="margin-left:8px;font-weight:400"></span></h2>
     <div class="fmbody">
       <div id="fmwrap" class="fmpic"><img id="fmimg" alt="farm" hidden><img id="fmlive" hidden alt=""><span id="fmlivelb" hidden></span><img id="fmimg0" alt="before" hidden><canvas id="fmcv"></canvas><div id="fmdiv" hidden><i></i></div><span class="fmlb l" id="fmlb0" hidden>前</span><span class="fmlb r" id="fmlb1" hidden>後</span></div>
@@ -471,9 +474,13 @@ setInterval(farmPhase,400);
 async function farm(){
   try{const j=await (await fetch('/api/farm?limit=24')).json();const it=j.items||[];SCHED.farm={now:j.now,at:performance.now(),next:j.next_at,busy:j.busy,interval:j.interval};schedTick();
     farm.items=it;farm.inset=j.inset;farm.waterMin=j.water_min;
-    if(!it.length){$('fmimg').hidden=true;$('fmmsg').textContent='撮影待ち(約'+Math.round(j.interval/60)+'分おき)';return}
-    $('fmmsg').textContent='約'+Math.round(j.interval/60)+'分おきに撮影(釣りを約5秒止めます)';
+    // 定期撮影を止めている(背面で釣りを続けるため既定は 0)ときは、空の写真枠を出さず 1 行にたたむ
+    const off=!j.interval;
+    $('fmcard').classList.toggle('off',off&&!j.busy);
+    if(!it.length){$('fmimg').hidden=true;$('fmmeta').textContent=off?'定期撮影は停止中(設定の farm_shot_interval で有効化)':'';$('fmmsg').textContent=off?'':'撮影待ち(約'+Math.round(j.interval/60)+'分おき)';return}
+    $('fmmsg').textContent=off?'定期撮影は停止中(最後の写真を表示)':'約'+Math.round(j.interval/60)+'分おきに撮影(釣りを約5秒止めます)';
     fmRender();
+    if(off)$('fmmeta').textContent='定期撮影は停止中・最終 '+hhmm(Math.max(...it.map(x=>x.ts)))+'(クリックで'+($('fmcard').classList.contains('open')?'たたむ':'開く')+')';
   }catch(e){}
 }
 // 1 枚の写真に「現状」(植えなしの枠)と「変化」(前回からの増減の枠)を切り替えて重ねる。変化では写真をタップすると前後が入れ替わる
@@ -546,6 +553,7 @@ $('fmcal').addEventListener('click',async e=>{const b=e.currentTarget;if(b.disab
   setTimeout(()=>{b.disabled=false;b.textContent='画角調整'},4000);farm()});
 $('fmbase').addEventListener('change',e=>{FM.base=e.target.value;fmRender()});
 farm();setInterval(farm,5000);
+$('fmcard').querySelector('h2').onclick=()=>{$('fmcard').classList.toggle('open');farm()};
 tick();evidence();live();
 setInterval(tick,1500);setInterval(live,1000);setInterval(evidence,8000);arList();setInterval(arList,60000);
 </script>
