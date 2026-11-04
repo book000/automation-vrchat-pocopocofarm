@@ -82,10 +82,11 @@ public static partial class Stats
         double gaps = evs.Where(e => e.Str("type") == "gap" && Tm(e) >= from && Tm(e) < to).Sum(e => e.Num("seconds") ?? 0);
 
         var scans = evs.Where(e => e.Str("type") == "farm_scan" && Tm(e) >= from && Tm(e) < to).OrderBy(Tm).ToList();
-        object? farm = scans.Count == 0 ? null : new Dictionary<string, object?>
+        var lastScan = scans.LastOrDefault(e => (e.Num("plots") ?? 0) > 0);      // 畑が見つからなかった撮影は状態として使わない
+        object? farm = lastScan is null ? null : new Dictionary<string, object?>
         {
-            ["scans"] = scans.Count, ["last_t"] = Tm(scans[^1]), ["plots"] = scans[^1].Num("plots"), ["unplanted"] = scans[^1].Num("unplanted"),
-            ["dry"] = scans[^1].Num("dry"), ["done"] = scans[^1].Num("done"), ["hidden"] = scans[^1].Num("hidden"),
+            ["scans"] = scans.Count, ["last_t"] = Tm(lastScan), ["plots"] = lastScan.Num("plots"), ["unplanted"] = lastScan.Num("unplanted"),
+            ["dry"] = lastScan.Num("dry"), ["done"] = lastScan.Num("done"), ["hidden"] = lastScan.Num("hidden"),
         };
 
         return new()
