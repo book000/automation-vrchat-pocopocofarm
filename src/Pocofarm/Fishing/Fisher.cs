@@ -316,10 +316,13 @@ public sealed class Fisher
         SetState(SCooldown, "aim_error");
         if (castFailures >= 3)
         {
-            tState = Now + cfg.CastFailPause;      // 連続失敗は待ち時間を延ばす
+            tState = Now + CastFailBackoff();
             AlertCastFailures();
         }
     }
+
+    /// <summary>連続失敗の待ち時間。3 回目から倍々に延ばし、<see cref="Config.CastFailPause"/> の 6 倍で頭打ちにする。</summary>
+    double CastFailBackoff() => cfg.CastFailPause * Math.Min(6.0, 1 << Math.Min(3, Math.Max(0, castFailures - 3)));
 
     /// <summary>投げ失敗が続いたら、画面を見ていなくても気づけるよう連続の最初の 1 回だけ通知する。</summary>
     void AlertCastFailures()
@@ -466,7 +469,7 @@ public sealed class Fisher
         if (b is null && lastPos is { } n) b = BobberDetector.Detect(f, region, n, exclude: ex, scale: scale, p: bp, maxWidth: narrow);
         // 追跡中の物が他人のアバターの赤白(静止していて沈みも出ない偽物)だと、近傍探索は永久にそれを返す。時々全体を探し直し、明らかに本物らしい物があれば乗り換える
         // 直近に沈みが出ている追跡対象は本物なので乗り換えない(他人のウキの方が点数が高くても、乗り換えで沈み判定が毎回やり直しになり見逃す)
-        if (b is not null && state is SWaitBite or SCastWait && ++auditTick % cfg.BobberAuditFrames == 0 && !HasRecentDips())
+        if (b is not null && state is SWaitBite or SCastWait && ++auditTick % Math.Max(1, cfg.BobberAuditFrames) == 0 && !HasRecentDips())
         {
             Bobber? g;
             if (LearnedLanding(f) is { } land)
@@ -607,6 +610,7 @@ public sealed class Fisher
     void Tick()
     {
         double now = Now;
+        status.Flush();       // どの分岐で抜けても更新が止まらないようにする(常駐が固まりの判定に使う)
         prof.Mark("paused-check");
         if (control.Poll())
         {
@@ -735,7 +739,7 @@ public sealed class Fisher
                         if (castFailures >= 3)
                         {
                             status.Set("message", "投げが池に届いていません。視線を池に向けてください");
-                            tState = Now + cfg.CastFailPause;
+                            tState = Now + CastFailBackoff();
                             AlertCastFailures();
                         }
                         return;
@@ -794,9 +798,9 @@ public sealed class Fisher
         {
             status.Set("message", "投げに連続失敗: 視線が池を向いているか確認してください");
             AlertCastFailures();
-            Thread.Sleep((int)(cfg.CastFailPause * 1000));
         }
         SetState(SCooldown, "cast_failed");
+        if (castFailures >= 3) tState = Now + CastFailBackoff();
         dip = NewDip();
     }
 
@@ -853,7 +857,7 @@ public sealed class Fisher
             liveFuture = liveWorker.Submit(() => { evidence.WriteLive(snap, snapBoxes); return true; });
         }
         prof.Mark("cleanup");
-        if (now - lastCleanup >= cfg.EvidenceCleanupInterval) { lastCleanup = now; evidence.Cleanup(); }
+        if (now - lastCleanup >= cfg.EvidenceCleanupInterval) { lastCleanup = now; evidence.CleanupAsync(); }
         prof.Mark("stats");
         if (now - lastStats >= 5)
         {

@@ -62,10 +62,23 @@ public static class Osc
         udp.Send(down, down.Length, "127.0.0.1", port);
         Task.Delay(holdMs).ContinueWith(_ =>
         {
-            var up = Message("/input/UseRight", 0);
-            udp.Send(up, up.Length, "127.0.0.1", port);
-            udp.Dispose();
+            try
+            {
+                var up = Message("/input/UseRight", 0);
+                udp.Send(up, up.Length, "127.0.0.1", port);
+            }
+            catch (SocketException) { }      // 離す指示が届かないと押しっぱなしになるが、次の Use と ReleaseUse が上書きする
+            finally { udp.Dispose(); }
         });
+    }
+
+    /// <summary>/input/UseRight を離す。釣りプロセスを強制終了したとき、押しっぱなしを残さないために使う。</summary>
+    public static void ReleaseUse(int port)
+    {
+        using var udp = new UdpClient();
+        var up = Message("/input/UseRight", 0);
+        try { udp.Send(up, up.Length, "127.0.0.1", port); }
+        catch (SocketException) { }
     }
 
     /// <summary>カメラのモード(0=閉じる)。開いている間だけ効く。</summary>

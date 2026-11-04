@@ -98,8 +98,19 @@ public sealed class EventLog
         };
         foreach (var (k, v) in fields) rec[k] = v;
         var line = JsonSerializer.Serialize(rec, Opt);
-        lock (gate) File.AppendAllText(path, line + "\n");
+        lock (gate) Append(line);
         if (type == "attempt" && JsonNode.Parse(line) is JsonObject o) lock (SessionAttempts) SessionAttempts.Add(o);
+    }
+
+    /// <summary>1 行追記する。ウイルス対策などの一時的なロックは短く待って再試行し、それでも書けなければ記録を諦める(釣りの本線を止めない)。</summary>
+    void Append(string line)
+    {
+        for (int i = 0; ; i++)
+        {
+            try { File.AppendAllText(path, line + "\n"); return; }
+            catch (IOException) when (i < 3) { Thread.Sleep(50); }
+            catch (IOException e) { Log.Warn($"イベントを書けませんでした: {e.Message}"); return; }
+        }
     }
 
     /// <summary>イベントを読み出す。壊れた行は飛ばす。since 以降(epoch 秒)だけに絞れる。</summary>

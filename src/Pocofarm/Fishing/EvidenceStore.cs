@@ -53,6 +53,9 @@ public sealed class EvidenceStore
     public void WriteLive(Frame frame, IReadOnlyList<Box> boxes) =>
         AtomicFile.Write(livePath, Imaging.ToJpeg(frame, boxes, 960, 70, 18));
 
+    /// <summary>掃除を保存と同じ作業スレッドへ回す(ファイルが多いと列挙が遅く、釣りの本線で呼ぶと止まるため)。詰まっていれば次の機会に回す。</summary>
+    public void CleanupAsync() => queue.TryAdd(() => Cleanup());
+
     /// <summary>期限切れと容量超過の証拠を古い順に削除し、削除数を返す。</summary>
     public int Cleanup() { lock (cleanupGate) return CleanupDir(dir, ttlSeconds, maxBytes); }
 
@@ -71,7 +74,7 @@ public sealed class EvidenceStore
                 if (f.LastWriteTimeUtc < cutoff) { f.Delete(); removed++; }
                 else keep.Add(f);
             }
-            catch (IOException ex) { Log.Warn($"証拠削除に失敗 {f.Name}: {ex.Message}"); }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { Log.Warn($"証拠削除に失敗 {f.Name}: {ex.Message}"); }
         }
         keep.Sort((a, b) => a.LastWriteTimeUtc.CompareTo(b.LastWriteTimeUtc));
         long total = keep.Sum(f => f.Length);
@@ -79,7 +82,7 @@ public sealed class EvidenceStore
         {
             if (total <= maxBytes) break;
             try { long size = f.Length; f.Delete(); total -= size; removed++; }
-            catch (IOException) { }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { }
         }
         if (removed > 0) Log.Info($"証拠を{removed}件掃除しました");
         return removed;

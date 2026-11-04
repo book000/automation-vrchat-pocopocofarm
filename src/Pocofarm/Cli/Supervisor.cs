@@ -10,6 +10,9 @@ namespace Pocofarm.Cli;
 /// <summary>常駐。釣りプロセスを子として起動し、落ちたら再起動し、新しい exe があれば入れ替える。</summary>
 public static class Supervisor
 {
+    /// <summary>status.json の更新がこれだけ途絶えたら、釣りプロセスが固まったとみなす(秒)。</summary>
+    const double HangSeconds = 90;
+
     /// <summary>run を子プロセスで起動し、落ちたら(restart_delay 秒後に)再起動し続ける(常駐用)。</summary>
     public static int Run(string[] args)
     {
@@ -34,9 +37,20 @@ public static class Supervisor
                 catch (IOException) { }
             };
             p.BeginErrorReadLine();
+            double started = Environment.TickCount64 / 1000.0;
             while (!p.WaitForExit(1000))
             {
-                if (cts.IsCancellationRequested) { p.Kill(true); return 0; }
+                if (cts.IsCancellationRequested) { p.Kill(true); Osc.ReleaseUse(cfg.OscPort); return 0; }
+                // 主ループが固まると status.json の更新が止まる(プロセスは生きたまま)。起動直後を除き、更新が途絶えたら殺して再起動する
+                double sinceStart = Environment.TickCount64 / 1000.0 - started;
+                if (sinceStart > HangSeconds && (DateTime.UtcNow - File.GetLastWriteTimeUtc(paths.Status)).TotalSeconds > HangSeconds)
+                {
+                    Log.Warn($"釣りプロセスの status.json が{HangSeconds:0}秒以上更新されません。固まったとみなして再起動します");
+                    p.Kill(true);
+                    p.WaitForExit(5000);
+                    Osc.ReleaseUse(cfg.OscPort);
+                    break;
+                }
                 // 設定は毎回読み直す(config.json の update_source を編集しても再起動なしで効く。手編集の途中で壊れていても落ちない)
                 var live = cfg;
                 try { live = Config.Load(paths.ConfigFile); }
@@ -52,6 +66,7 @@ public static class Supervisor
                     Log.Info("新しい exe を検出したため、釣りを止めて入れ替えます");
                     p.Kill(true);
                     p.WaitForExit(5000);
+                    Osc.ReleaseUse(cfg.OscPort);
                     if (SelfUpdate.Swap(self, next, args)) { Log.Info("入れ替えました。新しい常駐に引き継ぎます"); return 0; }
                 }
             }
