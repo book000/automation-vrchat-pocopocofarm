@@ -17,11 +17,17 @@ public static class Imaging
     /// <summary>フレームを幅 width に縮小し、枠を描いて JPEG のバイト列にする。</summary>
     public static byte[] ToJpeg(Frame frame, IEnumerable<Box> boxes, int width, int quality, float fontPx)
     {
-        using var src = new Bitmap(frame.Width, frame.Height, PixelFormat.Format32bppArgb);
-        var bd = src.LockBits(new Rectangle(0, 0, frame.Width, frame.Height), ImageLockMode.WriteOnly, PixelFormat.Format32bppArgb);
-        Marshal.Copy(frame.Data, 0, bd.Scan0, frame.Data.Length);
-        src.UnlockBits(bd);
+        // フレームの配列をそのまま Bitmap の画素領域にする(全画素の複製と大きなネイティブ確保を避ける)
+        var pin = GCHandle.Alloc(frame.Data, GCHandleType.Pinned);
+        try { return Encode(frame, pin.AddrOfPinnedObject(), boxes, width, quality, fontPx); }
+        finally { pin.Free(); }
+    }
 
+    [ThreadStatic] static MemoryStream? jpegBuf;
+
+    static byte[] Encode(Frame frame, nint scan0, IEnumerable<Box> boxes, int width, int quality, float fontPx)
+    {
+        using var src = new Bitmap(frame.Width, frame.Height, frame.Width * 4, PixelFormat.Format32bppArgb, scan0);
         double k = (double)width / frame.Width;
         using var dst = new Bitmap(width, Math.Max(1, (int)Math.Round(frame.Height * k)), PixelFormat.Format32bppRgb);
         using (var g = Graphics.FromImage(dst))
@@ -38,7 +44,8 @@ public static class Imaging
                 if (b.Label.Length > 0) g.DrawString(b.Label, font, Brushes.Yellow, x0, Math.Max(0, y0 - fontPx - 3));
             }
         }
-        using var ms = new MemoryStream();
+        var ms = jpegBuf ??= new MemoryStream();
+        ms.SetLength(0);
         using var ep = new EncoderParameters(1);
         ep.Param[0] = new EncoderParameter(System.Drawing.Imaging.Encoder.Quality, (long)quality);
         dst.Save(ms, Jpeg, ep);

@@ -43,7 +43,7 @@ public sealed partial class Fisher
         {
             // JPEG 化と保存は遅い環境で 0.7 秒ほどかかるので、釣りのループを止めないよう別スレッドで行う
             lastLive = now;
-            var snap = f.Clone();
+            var snap = f.CopyInto(ref liveSnap);     // 前回の保存は完了済み(上の条件)なので使い回せる
             var snapBoxes = boxes.ToList();
             liveFuture = liveWorker.Submit(() => { evidence.WriteLive(snap, snapBoxes); return true; });
         }

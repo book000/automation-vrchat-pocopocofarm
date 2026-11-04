@@ -17,6 +17,14 @@ public sealed class Frame
     /// <summary>画素データを複製する(証拠保存や OCR へ渡す用)。</summary>
     public Frame Clone() => new(Width, Height, (byte[])Data.Clone());
 
+    /// <summary>dest が同じ大きさなら使い回して画素を写す(違えば作り直す)。dest を他スレッドが読んでいる間は呼ばないこと。</summary>
+    public Frame CopyInto(ref Frame? dest)
+    {
+        if (dest is null || dest.Width != Width || dest.Height != Height) dest = new Frame(Width, Height);
+        Buffer.BlockCopy(Data, 0, dest.Data, 0, Data.Length);
+        return dest;
+    }
+
     /// <summary>画素を設定する(テスト・描画用)。</summary>
     public void Set(int x, int y, byte b, byte g, byte r)
     {
