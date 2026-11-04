@@ -9,7 +9,7 @@ source. Numbers read from in-world boards may change when the world is updated.
 
 ![Overhead view of the farm](images/world-overhead.jpg)
 
-Seen from above (camera at height 30, pitch 88):
+Seen from above (camera at height 30, pitch 88; people are hidden with the camera layer settings, see below):
 
 | Area | What it is |
 | --- | --- |
@@ -43,18 +43,29 @@ the board.
 Seeds can be upgraded per crop (the board shows "たね Lv 6/7" style levels), which shortens the growth time and raises
 the sell value. The page navigation buttons ("まえ" / "つぎ") flip between pages of the shop.
 
-### Tools
+### Tools ("どうぐ")
 
-- **Watering can (じょうろ)**: watering a planted plot removes 2 seconds of remaining growth time every 3 seconds for
-  15 minutes.
-- **Basket (カゴ)**: harvesting with the basket held collects all ripe crops within one plot at once.
+| Tool | What it does | Upgrade |
+| --- | --- | --- |
+| Watering can (じょうろ) | Watering a planted plot removes 2 seconds of remaining growth time every 3 seconds for 15 minutes | Level 4 of 7 on the read board; next level 30,000 coins, which changes it to 2 seconds per 2 seconds |
+| Basket (カゴ) | Hold and drag to harvest the ripe crops of one plot at once | Level 1 of 4; next level 1,500 coins, which widens the reach to a cross of 5 plots |
+
+The board also says that the fishing rod is bought at the pond, behind the mirror, and that bought tools are picked up
+from the rack on the right.
 
 ### Orchard ("かじゅえん")
 
 ![Orchard board](images/board-orchard.jpg)
 
-Fruit trees (apple, peach, mandarin, and a level-gated star fruit) are managed from this board. The board shows
-prices and unlock levels; the details were not read in full.
+Fruit trees are planted into free spots by clicking the spot, and the trees stay and bear fruit repeatedly. Fruit can
+turn golden when harvested and sells for more.
+
+| Tree | Sapling price | Unlock |
+| --- | --- | --- |
+| Apple (りんご) | 260 coins | - |
+| Peach (もも) | 520 coins | - |
+| Mandarin (みかん) | 600 coins | - |
+| Star fruit (スターフルーツ) | 2,000 coins | Level 50 |
 
 ### Other boards
 
@@ -74,9 +85,29 @@ prices and unlock levels; the details were not read in full.
 - Signboards stand close to the plots. At the default overhead angle the board roof can overlap the upper-left plots,
   which is why the camera pose uses a steep pitch of 88 degrees and a narrow offset from the plot centre.
 
-## The pond
+## The pond and the fishing board
 
-The pond is where all fishing happens. The instruction toast says "cast from 1-5 m away, point the rod tip at the
+The pond is where all fishing happens. A signboard titled "つり" stands next to it. It sells the rod (levels 1 to 5; level 5
+is the maximum and adds the saltwater fish, faster bites and 2.4 times experience) and lists the fish the pond can
+give. Caught fish are sold at a shipping box. A rod bought at the board is taken from the rod rack on its right.
+
+| Fish | Rod level needed | Sell price (coins) |
+| --- | --- | --- |
+| Crucian carp (フナ) | 1 | 3 |
+| Loach (ドジョウ) | 1 | 5 |
+| Carp (コイ) | 2 | 12 |
+| Catfish (ナマズ) | 2 | 20 |
+| Rainbow trout (ニジマス) | 3 | 28 |
+| Shrimp (エビ) | 3 | 30 |
+| Golden carp (金色のコイ) | 3 | 150 |
+| Salmon (サケ) | 4 | 50 |
+| Huchen (イトウ) | 4 | 400 |
+| Flounder (ヒラメ) | 5 | 4,000 |
+| Yellowtail (ブリ) | 5 | 4,500 |
+| Sea bream (タイ) | 5 | 5,000 |
+| Tuna (マグロ) | 5 | 8,000 |
+
+The instruction toast says "cast from 1-5 m away, point the rod tip at the
 water" ("池から 1~5 m くらいの所で、竿の先を水へ向けて"). Casting while the view is not facing the water produces the
 toast "池の水に向けて投げよう", which the bot treats as an aiming error.
 
@@ -91,11 +122,23 @@ zoom) once the camera is open and streaming to Spout. The poses below were used 
 | `0, 60, 0, 88, 0, 0, 56.6` | Straight down, wide: shows the forest around the clearing |
 | `0, 3, 0, 0, 0, 0, 56.6` | Ground level looking at the seed board |
 | `0, 3, 0, 0, 90, 0, 56.6` | Orchard board and the cooking area |
-| `0, 3, 0, 0, 180, 0, 56.6` | The pond |
 | `0, 3, 0, 0, 270, 0, 56.6` | Calendar, achievements and the music poster |
+
+The zoom value is the camera's field of view in degrees: smaller is wider (28 shows far more than 56.6, and 90 or more
+works as a telephoto). Pose `-4.5, 2.0, -6.8, 5, 100, 0, 180` reads the fishing board from the path.
+
+Photos around the pond are deliberately not included here, because other players and their pen drawings are often near
+it.
 
 Coordinates are world coordinates, and the origin is close to the middle of the farm clearing. The tour used the in-app
 farm shot command, then restored the saved pose, so a normal run is unaffected.
+
+## Hiding people in photos
+
+The stream camera has layer switches over OSC: `/usercamera/LocalPlayer`, `/usercamera/RemotePlayer` and
+`/usercamera/ShowUIInCamera` (booleans). The project sets all three to false while it takes a farm photo (setting
+`farm_hide_people`, on by default) and back to true afterwards. This removes avatars (yours and other players') from
+the picture; it does not remove drawings made with pens, which belong to the world.
 
 ## Notes for automation authors
 

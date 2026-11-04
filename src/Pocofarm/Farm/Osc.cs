@@ -43,7 +43,21 @@ public static class Osc
         udp.Send(m, m.Length, "127.0.0.1", port);
     }
 
-    /// <summary>カメラの画角(Zoom。値が大きいほど広く写る)。カメラが開いている間だけ効く。</summary>
+    /// <summary>
+    /// カメラに自分・他人のアバターと UI(ネームプレート等)を写すか。撮影中だけ false にして、人が写り込まないようにする。
+    /// カメラが開いている間だけ効く。
+    /// </summary>
+    public static void SetCameraLayers(bool showPeople, int port)
+    {
+        using var udp = new UdpClient();
+        foreach (var name in new[] { "LocalPlayer", "RemotePlayer", "ShowUIInCamera" })
+        {
+            var m = Message("/usercamera/" + name, showPeople);
+            udp.Send(m, m.Length, "127.0.0.1", port);
+        }
+    }
+
+    /// <summary>カメラの画角(Zoom。実測では値が小さいほど広く写る)。カメラが開いている間だけ効く。</summary>
     public static void SetZoom(float zoom, int port)
     {
         using var udp = new UdpClient();

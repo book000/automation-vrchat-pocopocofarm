@@ -117,6 +117,7 @@ public sealed partial class FarmShots(Paths paths, Config cfg, IFishingControl d
         {
             RestorePose();
             Osc.SetStreaming(true, cfg.OscPort);
+            if (cfg.FarmHidePeople) Osc.SetCameraLayers(false, cfg.OscPort);
             int waitSteps = (int)(cfg.FarmStreamWaitSeconds * 1000 / StreamPollMs);
             for (int i = 0; i < waitSteps && !SpoutCamera.IsStreaming(); i++)
             {
@@ -142,6 +143,7 @@ public sealed partial class FarmShots(Paths paths, Config cfg, IFishingControl d
         finally
         {
             Phase = ""; Note = "";
+            if (cfg.FarmHidePeople) Osc.SetCameraLayers(true, cfg.OscPort);
             await SpoutCamera.CloseAsync(cfg);
             if (SpoutCamera.IsStreaming()) { await SpoutCamera.CloseAsync(cfg); if (SpoutCamera.IsStreaming()) Log.Warn("ファーム写真: 配信を止められません(釣果が読めない状態のままです)"); }
         }

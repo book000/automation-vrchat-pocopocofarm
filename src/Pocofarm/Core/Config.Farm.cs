@@ -28,6 +28,7 @@ public sealed partial class Config
     [Desc("ファーム撮影: 画像を取り直す回数の上限")] public int FarmGrabAttempts { get; set; } = 4;
 
     [Desc("ダッシュボードに出す Spout 送信元の名前。空なら VRChat の送信元を自動で選ぶ")] public string SpoutSender { get; set; } = "";
+    [Desc("撮影中だけカメラのレイヤーから自分・他人のアバターと UI を外し、人が写り込まないようにする")] public bool FarmHidePeople { get; set; } = true;
     [Desc("VRChat の OSC 受信ポート")] public int OscPort { get; set; } = 9000;
     [Desc("カメラを開く操作を、OCR を使わず色の確認だけで速く行う(失敗時は従来の経路に切り替え)")] public bool FastCameraOpen { get; set; } = true;
     [Desc("カメラタブ(アイコン)の位置 [x, y](画面比率)")] public double[] CameraTab { get; set; } = [0.499, 0.872];

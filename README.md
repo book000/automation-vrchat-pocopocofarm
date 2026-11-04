@@ -105,6 +105,10 @@ Details are in [Architecture](docs/architecture.md).
 - [Operations](docs/operations.md)
 - [Troubleshooting](docs/troubleshooting.md)
 - [Development](docs/development.md)
+- [World map](docs/world-map.md): what is where in the world, boards, crops, fish and prices
+- [How the world works](docs/world-mechanics.md): bite timing, toasts, OSC and capture facts for automation authors
+- [Fishing analysis](docs/analysis-fishing.md) and [farm analysis](docs/analysis-farm.md): statistics from a recorded run
+- [Automation guide](docs/automation-guide.md): ranked recommendations and how to reproduce the statistics
 - [Contributing](CONTRIBUTING.md)
 
 ## Troubleshooting
