@@ -231,7 +231,7 @@ public sealed partial class Dashboard(Paths paths, Config cfg) : IFishingControl
             ["per5_5m"] = Per5(300), ["per5_30m"] = Per5(1800), ["per5_60m"] = Per5(3600),
             ["last_catch_age"] = caughtAt.Count > 0 ? Math.Round(now - caughtAt[^1], 1) : null,
             ["slow_30m"] = events.Count(e => e.Str("type") == "slow_cycle" && T(e) >= now - 1800),
-            ["restarts"] = events.Where(e => e.Str("type") == "session_start" && T(e) >= now - 24 * 3600).TakeLast(8).Reverse().Select(T).ToList(),
+            ["restarts"] = events.Where(e => e.Str("type") == "session_start" && T(e) >= now - 24 * 3600).Reverse().Select(T).ToList(),
         };
         var recent = attempts.TakeLast(60).Reverse().Select(e => Without(e, "_t", "trace")).ToList();
         SampleFps(status, alive);

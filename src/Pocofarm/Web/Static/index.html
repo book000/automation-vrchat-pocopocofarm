@@ -116,6 +116,13 @@ tr.unread td{background:#c2410c33;font-weight:700}
   .kpi .v{font-size:22px} .kpis{grid-template-columns:repeat(2,1fr)}
   table{font-size:12px} .scroll{max-height:260px}
 }
+.cc>:not(h2){display:none!important}
+.card>h2.ch{cursor:pointer;user-select:none;display:flex;align-items:center;gap:6px;min-height:28px}
+.card>h2.ch::before{content:"▾";font-size:11px;transition:transform .15s}
+.card.cc>h2.ch::before{transform:rotate(-90deg)}
+.card.cc>h2.ch{margin-bottom:0}
+@media (pointer:coarse){.card>h2.ch{min-height:44px}}
+@media (max-width:820px){main{padding:10px 12px;gap:10px}.kpi .v{font-size:24px}}
 </style>
 </head>
 <body>
@@ -132,13 +139,6 @@ tr.unread td{background:#c2410c33;font-weight:700}
 <main>
   <div id="alertband" class="band" hidden></div>
   <div id="nekobanner" class="nekobanner full" hidden></div>
-  <section class="card full fm" id="fmcard">
-    <h2>ファーム定点写真<span class="mute" id="fmmeta" style="margin-left:8px;font-weight:400"></span></h2>
-    <div class="fmbody">
-      <div id="fmwrap" class="fmpic"><img id="fmimg" alt="farm" hidden><img id="fmlive" hidden alt=""><span id="fmlivelb" hidden></span><img id="fmimg0" alt="before" hidden><canvas id="fmcv"></canvas><div id="fmdiv" hidden><i></i></div><span class="fmlb l" id="fmlb0" hidden>前</span><span class="fmlb r" id="fmlb1" hidden>後</span></div>
-      <div class="fmtxt"><div class="fmctl" id="fmctl"><span class="seg" id="fmside"><button data-p="100">前</button><button data-p="0">後</button></span><button id="fmmark" class="on" title="写真の上のマークを隠す/出す">マーク</button><select id="fmbase" title="この撮影からの変化を見る"></select><button id="fmcal" title="畑 8 面がちょうど収まるようにカメラ位置を自動で調整します(釣りを少し止めます)">画角調整</button></div><div id="fmsched"></div><div id="fmscan"></div><div id="fmalerts"></div><div id="fmtl"></div><div id="fmstrip" class="fmstrip"></div><div class="mute" id="fmmsg" style="margin-top:8px;font-size:12px"></div></div>
-    </div>
-  </section>
   <section class="card full"><h2>速度(匹/5分)</h2><div class="pace" id="pace"></div></section>
   <section class="kpis" id="kpis"></section>
 
@@ -156,6 +156,14 @@ tr.unread td{background:#c2410c33;font-weight:700}
     <section class="card"><h2>結果内訳(全期間)</h2><div class="bars" id="outcomes"></div></section>
     <section class="card"><h2>魚種別(全期間)</h2><div class="bars" id="fish"></div></section>
   </div>
+
+  <section class="card full fm" id="fmcard">
+    <h2>ファーム定点写真<span class="mute" id="fmmeta" style="margin-left:8px;font-weight:400"></span></h2>
+    <div class="fmbody">
+      <div id="fmwrap" class="fmpic"><img id="fmimg" alt="farm" hidden><img id="fmlive" hidden alt=""><span id="fmlivelb" hidden></span><img id="fmimg0" alt="before" hidden><canvas id="fmcv"></canvas><div id="fmdiv" hidden><i></i></div><span class="fmlb l" id="fmlb0" hidden>前</span><span class="fmlb r" id="fmlb1" hidden>後</span></div>
+      <div class="fmtxt"><div class="fmctl" id="fmctl"><span class="seg" id="fmside"><button data-p="100">前</button><button data-p="0">後</button></span><button id="fmmark" class="on" title="写真の上のマークを隠す/出す">マーク</button><select id="fmbase" title="この撮影からの変化を見る"></select><button id="fmcal" title="畑 8 面がちょうど収まるようにカメラ位置を自動で調整します(釣りを少し止めます)">画角調整</button></div><div id="fmsched"></div><div id="fmscan"></div><div id="fmalerts"></div><div id="fmtl"></div><div id="fmstrip" class="fmstrip"></div><div class="mute" id="fmmsg" style="margin-top:8px;font-size:12px"></div></div>
+    </div>
+  </section>
 
   <section class="card wide">
     <h2>失敗の原因別推移(10分ごと・直近6時間 / 緑=釣果)</h2>
@@ -289,7 +297,9 @@ const EXT=(()=>{
     b.hidden=!a.length;if(!a.length)return;
     b.className='badge '+(bad?'hwarn':'hok');b.textContent='畑 '+(bad?`要確認${bad}`:'')+(done?` 完了${done}`:'');
     b.title=a.map(x=>x.message).join('\n')+'\n'+f.note;
-    $('fmalerts').innerHTML='<div class="fmal">'+a.map(x=>`<span class="${x.kind}" title="${esc(f.note)}">${esc(x.message)}</span>`).join('')+'</div>';
+    // 畑ごとに同じ文面が並ぶので、種類ごとに畑名をまとめて 1 行にする
+    const g=new Map();a.forEach(x=>{const m=/^(\S+) (.*)$/.exec(x.message)||[0,'',x.message],k=x.kind+'|'+m[2];if(!g.has(k))g.set(k,{kind:x.kind,names:[],text:m[2]});g.get(k).names.push(m[1])});
+    $('fmalerts').innerHTML='<div class="fmal">'+[...g.values()].map(x=>`<span class="${x.kind}" title="${esc(f.note)}">${esc(x.names.join('・'))} ${esc(x.text)}</span>`).join('')+'</div>';
     farmTl(f);
   }
   function farmTl(f){
@@ -422,11 +432,11 @@ function render(d){
   const pc=d.pace||{},per=pc.per_hour??0,perw=pc.per_hour_window>=3600?'直近1時間':`今回起動から${Math.max(1,Math.round(pc.per_hour_window/60))}分`;
   $('kpis').innerHTML=
     kpi('成功率(直近1時間)',rate(d.hour),`${d.hour.caught}/${d.hour.attempts} 回`)+
-    kpi('成功率(今回起動)',rate(d.session),`${d.session.caught}/${d.session.attempts} 回 · 稼働${up}`)+
+    kpi('成功率(今回起動)',rate(d.session),`${d.session.caught}/${d.session.attempts} 回 · 稼働${up}${d.session.attempts<30?' · 少数':''}`)+
     kpi('釣果(全期間)',d.total.caught,`試行 ${d.total.attempts} · 経験値 +${d.total.exp} · ${d.stats.coins_total.toLocaleString()} コイン`)+
     kpi('釣果/時',per,`${perw} · ${d.stats.coins_per_hour.toLocaleString()} コイン/時`)+
-    kpi('失敗(全期間)',d.total.attempts-d.total.caught,Object.entries(d.total.outcomes).filter(([k,v])=>k!=='caught'&&v).map(([k,v])=>`${OJ[k]}${v}`).join(' · ')||'なし')+
-    kpi('FPS / 反応',(st.fps??'—'),`ウキ ${st.bobber?st.bobber.join(','):'未検出'} · 引く回数 ${st.pecks_to_reel??'—'}`);
+    kpi('失敗(全期間)',d.total.attempts-d.total.caught,(()=>{const f=Object.entries(d.total.outcomes).filter(([k,v])=>k!=='caught'&&v).sort((a,b)=>b[1]-a[1]);return f.slice(0,3).map(([k,v])=>`${OJ[k]}${v}`).join(' · ')+(f.length>3?' ほか':'')||'なし'})())+
+    kpi('FPS / 反応',(st.fps??'—'),`ウキ ${st.bobber?'検出中(幅'+st.bobber[2]+')':'未検出'}`);
   const lr=st.last_result;
   if(lr){$('last').innerHTML=chip(lr.outcome)+' '+esc(lr.fish||'')+(lr.exp?` <span class="mute">+${lr.exp}XP</span>`:'');$('lastsub').textContent=fmtT(lr.ts*1000)+' #'+lr.attempt}
   const tot=d.total.attempts||1;
@@ -569,9 +579,9 @@ function alertBand(d){
 }
 const n00=v=>v==null?'--.-':Number(v).toFixed(1).padStart(4,'0');
 function pace(d){
-  const p=d.pace||{},r=(p.restarts||[]).slice(0,innerWidth<=600?3:8);
+  const p=d.pace||{},r=p.restarts||[];
   $('pace').innerHTML=`<span><b>${n00(p.per5_5m)}</b> <span class="mute">直近5分</span></span><span><b>${n00(p.per5_30m)}</b> <span class="mute">直近30分</span></span><span><b>${n00(p.per5_60m)}</b> <span class="mute">直近60分</span></span>`+
-    `<span class="mute">最後の釣果 <span class="num3">${p.last_catch_age==null?'-':Math.min(999,Math.round(p.last_catch_age))}</span>秒前 · 再起動(24h) ${r.length?r.map(t=>fmtT(t*1000)).join(' / '):'なし'}</span>`;
+    `<span class="mute">最後の釣果 <span class="num3">${p.last_catch_age==null?'-':Math.min(999,Math.round(p.last_catch_age))}</span>秒前 · <span title="${esc(r.map(t=>fmtT(t*1000)).join(' / '))}">再起動 24h ${r.length?r.length+'回(最後 '+fmtT(r[0]*1000)+')':'なし'}</span></span>`;
 }
 function nekoBanner(d){
   const un=(d.neko||[]).filter(e=>e._t>(d.neko_ack||0)),b=$('nekobanner');
@@ -827,6 +837,24 @@ document.getElementById('manualctl').addEventListener('click',async e=>{
   const m=document.getElementById('mcmsg');
   try{const r=await fetch('/api/control?'+q,{method:'POST'});m.textContent=r.ok?'送信しました':'失敗 '+r.status}catch(x){m.textContent='失敗'}
 });
+</script>
+<script>
+// 長い補助セクションは見出しをタップして開閉する(既定は閉じる。状態は端末に保存)
+(()=>{
+  const SEC=['調整・運用の統計','処理時間の内訳','注意イベント','失敗の整理','試行履歴','画面証拠','アーカイブ','ログ','起動時の自己点検','設定ツール'];
+  let st={};try{st=JSON.parse(localStorage.getItem('sec')||'{}')}catch(e){}
+  const save=()=>{try{localStorage.setItem('sec',JSON.stringify(st))}catch(e){}};
+  document.querySelectorAll('main>section.card,#pxwrap>section.card').forEach(sec=>{
+    const h=sec.querySelector(':scope>h2');if(!h)return;
+    const t=(h.firstChild&&h.firstChild.textContent||h.textContent).trim();
+    const key=SEC.find(k=>t.startsWith(k));if(!key)return;
+    h.classList.add('ch');h.setAttribute('role','button');h.tabIndex=0;
+    if(st[key]!==false)sec.classList.add('cc');
+    const tg=()=>{sec.classList.toggle('cc');st[key]=sec.classList.contains('cc');save()};
+    h.addEventListener('click',e=>{if(e.target.closest('button,a,select,input'))return;tg()});
+    h.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();tg()}});
+  });
+})();
 </script>
 </body>
 </html>
