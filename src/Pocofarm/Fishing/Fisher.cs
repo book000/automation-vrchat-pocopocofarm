@@ -58,7 +58,6 @@ public sealed partial class Fisher
     bool castMoved;
     double castLastSeen;
     int toastNoise;
-    static readonly string[] NoiseHints = ["れた", "びくび", "沈んで", "すぐに引", "引こう", "かかって", "経験", "持っ", "匹"];
     int pecks;
     double tArmed;
     readonly Dictionary<string, double> kindLast = [];
@@ -79,7 +78,7 @@ public sealed partial class Fisher
     List<Box> boxes = [];
     bool startupAdopt = true;
     bool castVerified;                  // 自分の投げ/引きでウキの状態を確認できたか
-    double unverifiedWait = 25.0;       // 未確認のまま当たりを待つ上限(再開直後は短くする)
+    double unverifiedWait;            // 未確認のまま当たりを待つ上限(再開直後は短くする)
     readonly double startedAt = EventLog.Now();
     double lastTick = EventLog.Now();
     readonly ViewMotion viewMotion;
@@ -107,6 +106,7 @@ public sealed partial class Fisher
         control.Resumed += OnResumed;
         recorder = new AttemptRecorder(cfg, events, status, SaveEvidence, auditor, control);
         control.DataReset += () => lastStats = 0.0;
+        unverifiedWait = cfg.UnverifiedWait;
     }
 
     /// <summary>ダッシュボード用に共有する状態。</summary>

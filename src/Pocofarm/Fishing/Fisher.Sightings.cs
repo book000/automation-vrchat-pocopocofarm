@@ -75,7 +75,7 @@ public sealed partial class Fisher
                 return;
             }
             RecordAttempt("missed_bite", t, f, null, "引く前に逃げられた(沈み検出の見逃し)",
-                new() { ["trace"] = TraceTail(90), ["pecks_seen"] = pecks });
+                new() { ["trace"] = TraceTail(cfg.EvidenceTraceLength), ["pecks_seen"] = pecks });
             return;
         }
         var name = SaveEvidence(f, $"unlinked_{t.Kind}", new { text = t.Text, state = state.Wire(), engine = s.Engine });
@@ -87,7 +87,7 @@ public sealed partial class Fisher
     void NoteUnclassified(Sighting s, Frame f)
     {
         // 確定済みの結果(釣れた/逃げられた/まだかかっていません)の表示が消えていく途中の誤読は、同じ通知の読み損ないなので件数だけ数える
-        if (recorder.LastFinal is { } fin && s.T - fin.T < cfg.ToastNoiseWindow && NoiseHints.Any(h => s.Text.Contains(h)))
+        if (recorder.LastFinal is { } fin && s.T - fin.T < cfg.ToastNoiseWindow && ToastNoise.IsFadingFragment(s.Text))
         {
             status.Set("toast_noise", ++toastNoise);
             return;

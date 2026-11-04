@@ -12,6 +12,11 @@ public static class ToastNoise
         ("hint_panel", ["釣り竿", "クリックで", "池を見て"]),
     ];
 
+    static readonly string[] FadingHints = ["れた", "びくび", "沈んで", "すぐに引", "引こう", "かかって", "経験", "持っ", "匹"];
+
+    /// <summary>確定済みの結果トーストが消えていく途中の誤読らしい文字列か。</summary>
+    public static bool IsFadingFragment(string text) => FadingHints.Any(h => text.Contains(h));
+
     /// <summary>当てはまる種別。どれでもなければ null(本当の未分類)。</summary>
     public static string? Category(string text)
     {

@@ -13,9 +13,9 @@ public sealed partial class Fisher
     {
         castFailures++;
         RecordAttempt("cast_failed", s.Toast, f, null, $"視線が池を向いていない(連続{castFailures}回)");
-        status.Set("message", castFailures >= 3 ? "投げが池に届いていません。視線を池に向けてください" : "");
+        status.Set("message", castFailures >= cfg.CastFailAlertCount ? "投げが池に届いていません。視線を池に向けてください" : "");
         SetState(FishState.Cooldown, "aim_error");
-        if (castFailures >= 3)
+        if (castFailures >= cfg.CastFailAlertCount)
         {
             tState = Now + CastFailBackoff();
             AlertCastFailures();
@@ -23,7 +23,7 @@ public sealed partial class Fisher
     }
 
     /// <summary>連続失敗の待ち時間。3 回目から倍々に延ばし、<see cref="Config.CastFailPause"/> の 6 倍で頭打ちにする。</summary>
-    double CastFailBackoff() => cfg.CastFailPause * Math.Min(6.0, 1 << Math.Min(3, Math.Max(0, castFailures - 3)));
+    double CastFailBackoff() => cfg.CastFailPause * Math.Min(6.0, 1 << Math.Min(3, Math.Max(0, castFailures - cfg.CastFailAlertCount)));
 
     /// <summary>投げ失敗が続いたら、画面を見ていなくても気づけるよう連続の最初の 1 回だけ通知する。</summary>
     void AlertCastFailures()
@@ -81,14 +81,14 @@ public sealed partial class Fisher
     {
         castFailures++;
         RecordAttempt("cast_failed", null, f, null, $"投げ後{cfg.CastTimeout:F0}秒でウキが静止せず(連続{castFailures}回) {dip.Diagnostics} 移動={castMoved} 武装={dip.Armed}",
-            new() { ["trace"] = TraceTail(90) });
-        if (castFailures >= 3)
+            new() { ["trace"] = TraceTail(cfg.EvidenceTraceLength) });
+        if (castFailures >= cfg.CastFailAlertCount)
         {
             status.Set("message", "投げに連続失敗: 視線が池を向いているか確認してください");
             AlertCastFailures();
         }
         SetState(FishState.Cooldown, "cast_failed");
-        if (castFailures >= 3) tState = Now + CastFailBackoff();
+        if (castFailures >= cfg.CastFailAlertCount) tState = Now + CastFailBackoff();
         dip = NewDip();
     }
 }

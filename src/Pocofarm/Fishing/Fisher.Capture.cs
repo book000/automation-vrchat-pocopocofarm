@@ -131,24 +131,24 @@ public sealed partial class Fisher
             prof.Account(now, "paused");
             lastTick = now;
             status.Flush();
-            Thread.Sleep(100);
+            Thread.Sleep(cfg.IdlePollMs);
             return;
         }
         double gap = now - lastTick;
         lastTick = now;
         if (gap > cfg.GapThreshold) { prof.Account(now, "gap"); AfterGap(gap); }
         prof.Mark("ensure-capture");
-        if (!EnsureCapture()) { prof.Account(now, "gap"); status.Flush(); Thread.Sleep(500); return; }
+        if (!EnsureCapture()) { prof.Account(now, "gap"); status.Flush(); Thread.Sleep(cfg.NoCaptureRetryMs); return; }
         prof.Account(now, "active");
 
         prof.Mark("copy");
         bool fresh = cap!.CopyLatestTo(ref frame, ref frameSeen);
         if (frame is null || (!fresh && now - Math.Max(cap.LatestAt, capStarted) > cfg.CaptureStallSeconds))
         {
-            if (frame is null && now - capStarted < 3.0) { Thread.Sleep(10); return; }     // 開始直後は最初のフレーム待ち
+            if (frame is null && now - capStarted < cfg.StartupFrameWait) { Thread.Sleep(10); return; }     // 開始直後は最初のフレーム待ち
             Log.Warn("フレーム取得不可。キャプチャを再初期化します");
             cap.Dispose(); cap = null;
-            Thread.Sleep(300);
+            Thread.Sleep(cfg.CaptureReinitMs);
             return;
         }
         var f = frame;

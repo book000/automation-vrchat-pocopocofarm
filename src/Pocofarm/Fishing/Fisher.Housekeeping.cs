@@ -11,7 +11,7 @@ public sealed partial class Fisher
     void AddTrace(double t, int y, int w)
     {
         trace.AddLast((t, y, w));
-        if (trace.Count > 120) trace.RemoveFirst();
+        if (trace.Count > cfg.TraceLength) trace.RemoveFirst();
     }
     // ---------------------------------------------------------------- 表示・保守
 
@@ -49,7 +49,7 @@ public sealed partial class Fisher
         prof.Mark("cleanup");
         if (now - lastCleanup >= cfg.EvidenceCleanupInterval) { lastCleanup = now; evidence.CleanupAsync(); }
         prof.Mark("stats");
-        if (now - lastStats >= 5)
+        if (now - lastStats >= cfg.StatsInterval)
         {
             lastStats = now;
             status.Set("session", events.SummarizeSession());

@@ -59,7 +59,7 @@ public sealed partial class Fisher
         expectAway = pos;
         attempt = new Attempt(events.NextAttempt(), now, tClick, pos, pecks)
         {
-            Trace = trace.TakeLast(60).Select(x => new[] { Math.Round(x.T, 2), x.Y, (double)x.W }).ToList(),
+            Trace = trace.TakeLast(cfg.AttemptTraceLength).Select(x => new[] { Math.Round(x.T, 2), x.Y, (double)x.W }).ToList(),
             FrameClick = f.Clone(), TArmed = tArmed, BaseW = dip.BaseW,
         };
         SetState(FishState.ResultWait, why);
@@ -105,7 +105,7 @@ public sealed partial class Fisher
                         SetState(FishState.Cooldown, "cast_failed");
                         dip = NewDip();
                         // 待ち時間では直らない連続の不発(視線のずれなど)は、間隔を空けて、気づけるよう通知する
-                        if (castFailures >= 3)
+                        if (castFailures >= cfg.CastFailAlertCount)
                         {
                             status.Set("message", "投げが池に届いていません。視線を池に向けてください");
                             tState = Now + CastFailBackoff();
@@ -168,7 +168,7 @@ public sealed partial class Fisher
         attempt = new Attempt(events.NextAttempt(), t, t, pos, pecks)
         {
             Probe = true,
-            Trace = trace.TakeLast(60).Select(x => new[] { Math.Round(x.T, 2), x.Y, (double)x.W }).ToList(),
+            Trace = trace.TakeLast(cfg.AttemptTraceLength).Select(x => new[] { Math.Round(x.T, 2), x.Y, (double)x.W }).ToList(),
         };
         SetState(FishState.ResultWait, "当たりなし確認クリック");
     }
