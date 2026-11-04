@@ -174,6 +174,14 @@ public sealed partial class Fisher
             dip = NewDip();
             lastPos = null;
             viewMotion.Reset();
+            // 縦横比が変わると同じ場面でも位置の比率が変わる。覚えた着水位置・他人のウキの位置は使えないので捨てて学び直す(ウィンドウをなめらかに広げ縮めしている間は毎回捨てるだけで害はない)
+            double aspect = f.Width / (double)f.Height;
+            if (lastAspect > 0 && Math.Abs(aspect / lastAspect - 1) > 0.04)
+            {
+                landings.Clear(); SaveLandings(); decoyTracker.Clear();
+                Log.Warn($"画面の縦横比が変わったため、覚えた着水位置と他人のウキの位置を捨てて学び直します({lastAspect:F2} → {aspect:F2})");
+            }
+            lastAspect = aspect;
         }
         if (fresh)
         {

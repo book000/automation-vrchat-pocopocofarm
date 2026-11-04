@@ -78,6 +78,7 @@ public sealed partial class Fisher
     double lastLive, lastCleanup, lastStats;
     List<Box> boxes = [];
     bool startupAdopt = true;
+    double lastAspect;                  // 直前の作業フレームの縦横比(変わったら位置の記憶を捨てる)
     double lastCastClickAt;             // 直近の投げクリックの時刻(当たりのタイマーが投げと着水のどちらで始まるかを後から調べるため)
     bool castVerified;                  // 自分の投げ/引きでウキの状態を確認できたか
     double unverifiedWait;            // 未確認のまま当たりを待つ上限(再開直後は短くする)
