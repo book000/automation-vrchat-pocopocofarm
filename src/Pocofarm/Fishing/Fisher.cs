@@ -55,6 +55,7 @@ public sealed class Fisher
     (int X, int Y)? castFrom;                        // 投げのクリックを送った時点のウキ位置(竿先にぶら下がったウキ)。ここから動かず静止したなら投げは効いていない
     Frame? workFrame;
     Frame? cur;                                     // いま処理中のフレーム(縮小後)。範囲・倍率はこの大きさに合わせてある
+    int staleStreak;
     readonly List<(double X, double Y)> landings = [];     // 釣れたときのウキ位置(画面に対する比率。ウィンドウの大きさが変わっても使える)。自分のウキは毎回ほぼ同じ場所に着水する
     List<(int, int, int, int)> decoys = [];     // 投げる前から画面にあったウキ候補(他人のウキ・アバターの赤白)。投げ後は探索から除く
     (int X, int Y)? lastPos, castOrigin, expectAway, anchorPos;     // anchorPos: 直近に静止を確認した位置(再開後などで本物のウキを優先して探す)
@@ -241,10 +242,24 @@ public sealed class Fisher
 
     // ---------------------------------------------------------------- 試行の確定
 
+    /// <summary>
+    /// 釣れない結果が続いたら、覚えた着水位置と他人のウキの升目を捨てる。視点が変わると着水位置が移るのに、古い着水位置へ乗り換えて、
+    /// 釣れないので学び直せない行き詰まりになるため。
+    /// </summary>
+    void ForgetStaleView(string outcome)
+    {
+        if (outcome == "caught") { staleStreak = 0; return; }
+        if (outcome is not ("missed_bite" or "early" or "escaped" or "unknown") || ++staleStreak < 6) return;
+        staleStreak = 0;
+        landings.Clear(); decoyHeat.Clear();
+        Log.Warn("釣れない結果が続いたため、覚えた着水位置と他人のウキの位置を捨てて学び直します");
+    }
+
     Dictionary<string, object?> RecordAttempt(string outcome, Toast? toast, Frame? f, Attempt? a, string note, Dictionary<string, object?>? extra = null)
     {
         var fields = recorder.Record(outcome, toast, f, a, note, pecks, extra);
         if (outcome == "caught" && fields["wait_s"] is double ws) tuner.NoteBiteWait(ws);
+        ForgetStaleView(outcome);
         return fields;
     }
 
