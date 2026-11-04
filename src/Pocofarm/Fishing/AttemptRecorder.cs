@@ -51,6 +51,8 @@ public sealed class AttemptRecorder(Config cfg, EventLog events, Status status, 
         if (f is not null && keepEvidence) fields["evidence"] = saveEvidence(f, $"{outcome}_{aid}", new { attempt = aid, outcome, ocr = fields["ocr"] });
         if (a?.FrameClick is { } fc && outcome != "caught" && keepEvidence)
             fields["evidence_click"] = saveEvidence(fc, $"{outcome}_{aid}_click", new { attempt = aid, trace = a.Trace });
+        // 保存側は自前の写しを取るので、クリック時のフレームはここで返して使い回す
+        if (a?.FrameClick is { } spent) { a.FrameClick = null; FramePool.Return(spent); }
         events.Write("attempt", fields);
         // 失敗扱いにならないまま時間だけ失う異常(投げ無視などで当たり待ちが長引く)を拾う。一時停止明けは数えない
         double since = Now - Math.Max(lastAttemptAt, control.LastResumeAt);

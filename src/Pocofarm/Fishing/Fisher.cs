@@ -32,6 +32,7 @@ public sealed partial class Fisher
     long frameSeen;
     readonly SingleWorker liveWorker = new("live");
     Task<bool>? liveFuture;
+    Frame? liveSnap;                    // ライブ画像用の複製バッファ(保存が終わるまで書き換えない)
     readonly ToastReader reader;
     readonly HudMonitor hud;
     readonly NekoCollector nekos;

@@ -28,14 +28,14 @@ public sealed class EvidenceStore
         t.Start();
     }
 
-    /// <summary>フレームを縮小して非同期保存し、ファイル名を返す。frame は呼び出し側が以後触らないコピーを渡すこと。</summary>
-    public string Save(Frame frame, string name, object meta, IReadOnlyList<Box>? boxes = null)
+    /// <summary>フレームを縮小して非同期保存し、ファイル名を返す。frame は呼び出し側が以後触らないコピーを渡すこと。pooled なら保存後に FramePool へ返す。</summary>
+    public string Save(Frame frame, string name, object meta, IReadOnlyList<Box>? boxes = null, bool pooled = false)
     {
         if (name == "unclassified_toast" && !TryReserveUnclassified()) return "";
         var fname = $"{DateTime.Now.ToString("yyyyMMdd_HHmmss_fff", CultureInfo.InvariantCulture)}_{name}.jpg";
         var b = boxes?.ToList() ?? [];
         // キューが詰まっているときは古い証拠を優先して新しいものを諦める(釣りの処理を止めない)
-        if (!queue.TryAdd(() => Write(frame, fname, meta, b))) Log.Warn($"証拠保存が詰まっているため破棄: {fname}");
+        if (!queue.TryAdd(() => { Write(frame, fname, meta, b); if (pooled) FramePool.Return(frame); })) Log.Warn($"証拠保存が詰まっているため破棄: {fname}");
         return fname;
     }
 

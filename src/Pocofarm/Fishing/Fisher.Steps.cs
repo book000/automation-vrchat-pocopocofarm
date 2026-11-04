@@ -60,7 +60,7 @@ public sealed partial class Fisher
         attempt = new Attempt(events.NextAttempt(), now, tClick, pos, pecks)
         {
             Trace = trace.TakeLast(cfg.AttemptTraceLength).Select(x => new[] { Math.Round(x.T, 2), x.Y, (double)x.W }).ToList(),
-            FrameClick = f.Clone(), TArmed = tArmed, BaseW = dip.BaseW,
+            FrameClick = FramePool.RentCopy(f), TArmed = tArmed, BaseW = dip.BaseW,
         };
         SetState(FishState.ResultWait, why);
     }

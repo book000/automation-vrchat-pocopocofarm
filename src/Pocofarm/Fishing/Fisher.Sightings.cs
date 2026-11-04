@@ -106,7 +106,7 @@ public sealed partial class Fisher
         Log.Warn($"未分類のトースト領域テキスト: {s.Text}");
     }
 
-    string SaveEvidence(Frame f, string name, object meta) => evidence.Save(f.Clone(), name, meta, boxes);
+    string SaveEvidence(Frame f, string name, object meta) => evidence.Save(FramePool.RentCopy(f), name, meta, boxes, pooled: true);
 
     List<object> TraceTail(int n) =>
         trace.TakeLast(n).Select(x => (object)new object[] { Math.Round(x.T, 2), x.Y, x.W }).ToList();

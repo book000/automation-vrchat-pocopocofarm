@@ -23,6 +23,7 @@ public sealed class HudMonitor
     WinOcr? ocr;
     Task<int?>? levelFuture;
     Task<(double X, double Y, double W, double H)?>? locateFuture;
+    Frame? locateSnap;
     int miss;                                       // レベルが続けて読めなかった回数(領域ずれの疑い)
     double lastLocate, lastRead, lastWrite;
     (int W, int H, double[] Level, double[] Xp)? cal;   // 「Lv」の文字位置から割り出した領域(画面サイズごと)
@@ -83,7 +84,7 @@ public sealed class HudMonitor
         if (locateFuture is null && miss >= cfg.HudMissBeforeLocate && now - lastLocate >= cfg.HudLocateInterval)
         {
             lastLocate = now;
-            var snap = f.Clone();
+            var snap = f.CopyInto(ref locateSnap);     // locateFuture が null の間だけ来るので使い回せる
             locateFuture = worker.Submit(() => { ocr ??= new WinOcr(); return HudLocator.FindLv(snap, ocr); });
         }
         if (levelFuture is null && now - lastRead >= cfg.HudInterval)
