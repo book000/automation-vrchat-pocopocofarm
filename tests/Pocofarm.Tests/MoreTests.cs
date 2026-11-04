@@ -141,6 +141,7 @@ public class MoreTests : IDisposable
     [Fact]
     public void WinOcr_ReadsEveryFixtureKind()
     {
+        Assert.SkipUnless(WinOcr.IsAvailable(), "日本語の Windows OCR 言語パックがない環境ではスキップする");
         var ocr = new WinOcr();
         var fish = new Config().KnownFish;
         var files = Directory.GetFiles(Path.Combine(RepoRoot(), "tests", "fixtures", "ocr"), "*.png").Order().ToList();

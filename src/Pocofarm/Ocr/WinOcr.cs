@@ -23,6 +23,9 @@ public sealed partial class WinOcr : IOcr
 
     public string Name => "winocr";
 
+    /// <summary>この環境で日本語の Windows OCR を使えるか(言語パックの有無。CI の Windows Server には無いことがある)。</summary>
+    public static bool IsAvailable() => OcrEngine.TryCreateFromLanguage(new Language("ja")) is not null;
+
     public WinOcr()
     {
         engine = OcrEngine.TryCreateFromLanguage(new Language("ja"))

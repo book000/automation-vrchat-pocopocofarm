@@ -64,7 +64,7 @@ mkdir $env:TEMP\pocofarm-run
 
 ### Tests
 
-The tests use xUnit v3. They cover detection and dip logic, toast classification, configuration validation, auto-tuning, the farm grid analysis, and OCR accuracy on the fixture images. Image-based tests find their data by walking up from the test binary to the `tests/fixtures` directory, so keep that directory in the repository. Some tests exercise Windows OCR and need the Japanese OCR language pack installed on the machine.
+The tests use xUnit v3. They cover detection and dip logic, toast classification, configuration validation, auto-tuning, the farm grid analysis, and OCR accuracy on the fixture images. Image-based tests find their data by walking up from the test binary to the `tests/fixtures` directory, so keep that directory in the repository. The Windows OCR test needs the Japanese OCR language pack and is skipped on machines without it (the GitHub-hosted Windows runner has none, so CI skips it; the PP-OCR tests still run there).
 
 ### Continuous integration
 
