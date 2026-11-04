@@ -557,5 +557,63 @@ $('fmcard').querySelector('h2').onclick=()=>{$('fmcard').classList.toggle('open'
 tick();evidence();live();
 setInterval(tick,1500);setInterval(live,1000);setInterval(evidence,8000);arList();setInterval(arList,60000);
 </script>
+<!-- 自己点検・設定ツール・診断 zip(自己完結。他の部分とは id 接頭辞 px で分けている) -->
+<div id="pxwrap" style="max-width:1700px;margin:0 auto;padding:0 18px 18px;display:grid;gap:14px">
+  <section class="card" id="pxself"><h2>起動時の自己点検</h2><div id="pxselfbody" class="mute">確認中…</div></section>
+  <section class="card" id="pxtools">
+    <h2>設定ツール</h2>
+    <div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center">
+      <select id="pxpreset"></select><button id="pxpapply">プリセット適用</button>
+      <select id="pxsec"></select><button id="pxsreset">区分を既定値に戻す</button>
+      <button id="pxundo">直前の変更を取り消す</button>
+      <a href="/api/diag.zip" download><button type="button">診断 zip</button></a>
+      <span id="pxmsg" class="mute"></span>
+    </div>
+    <div id="pxpdesc" class="mute" style="font-size:12px;margin-top:6px"></div>
+    <h2 style="margin-top:12px">既定値と違う設定 <span id="pxcnt"></span></h2>
+    <div id="pxdiff" style="font-size:12px"></div>
+  </section>
+</div>
+<script>
+(()=>{
+const g=id=>document.getElementById(id),E=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+let T=null;
+async function selfcheck(){
+  try{
+    const j=await (await fetch('/api/selfcheck',{cache:'no-store'})).json(),b=g('pxselfbody');
+    if(!j.done){b.textContent='未実施または実行中';return}
+    const col={ok:'#43a047',info:'var(--mute)',warn:'#fb8c00',fail:'#e53935'};
+    b.innerHTML='<div style="font-weight:700;color:'+(j.needs_attention?'#e53935':'#43a047')+'">'+E(j.summary)+'</div>'
+      +(j.checks||[]).map(c=>'<div style="color:'+col[c.level]+'">['+E(c.level)+'] '+E(c.message)+'</div>').join('')
+      +'<div class="mute" style="font-size:11px">'+new Date(j.ts*1000).toLocaleString('ja-JP')+' / 一時停止はしていません</div>';
+  }catch(e){}
+}
+async function tools(){
+  try{
+    T=await (await fetch('/api/config/tools',{cache:'no-store'})).json();
+    g('pxpreset').innerHTML=T.presets.map(p=>'<option value="'+E(p.name)+'">'+E(p.name)+'</option>').join('');
+    g('pxsec').innerHTML=T.sections.map(s=>'<option>'+E(s)+'</option>').join('');
+    descr();
+    g('pxundo').disabled=!T.undo.available;
+    g('pxcnt').textContent='('+T.changed.length+')';
+    g('pxdiff').innerHTML=T.changed.length?T.changed.map(c=>'<div><code>'+E(c.key)+'</code> <span class="mute">'+E(c.section)+'</span> = <b>'+E(JSON.stringify(c.value))+'</b> <span class="mute">(既定 '+E(JSON.stringify(c.default))+')</span></div>').join(''):'<span class="mute">すべて既定値です</span>';
+  }catch(e){}
+}
+function descr(){const p=T&&T.presets.find(x=>x.name===g('pxpreset').value);g('pxpdesc').textContent=p?p.desc+' '+JSON.stringify(p.patch):''}
+g('pxpreset').onchange=descr;
+async function post(url,label){
+  g('pxmsg').textContent='…';
+  try{
+    const j=await (await fetch(url,{method:'POST'})).json();
+    g('pxmsg').textContent=j.ok?label+'しました'+(j.restart_required&&j.restart_required.length?'(再起動で反映: '+j.restart_required.join(', ')+')':''):'失敗: '+j.error;
+  }catch(e){g('pxmsg').textContent='失敗'}
+  tools();if(typeof cfgLoad==='function'&&!g('cfgbox').hidden)cfgLoad();
+}
+g('pxpapply').onclick=()=>confirm('プリセットを適用します。直前の変更の取り消しで戻せます。')&&post('/api/config/preset?name='+encodeURIComponent(g('pxpreset').value),'適用');
+g('pxsreset').onclick=()=>confirm(g('pxsec').value+' の設定をすべて既定値に戻します。')&&post('/api/config/reset-section?name='+encodeURIComponent(g('pxsec').value),'リセット');
+g('pxundo').onclick=()=>post('/api/config/undo','取り消し');
+selfcheck();tools();setInterval(selfcheck,15000);setInterval(tools,30000);
+})();
+</script>
 </body>
 </html>
