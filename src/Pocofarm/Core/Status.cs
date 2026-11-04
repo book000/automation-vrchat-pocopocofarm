@@ -39,6 +39,11 @@ public sealed class Status(string path)
             Data["heartbeat"] = now;
             bytes = JsonSerializer.SerializeToUtf8Bytes(Data, Opt);
         }
-        AtomicFile.Write(path, bytes);
+        if (AtomicFile.Write(path, bytes)) { failedSince = 0; return; }
+        // 書けない状態が続くと心拍が止まり、ダッシュボードが「停止」と表示する。原因を後から追えるよう、30 秒続いたら 1 回だけ記録する
+        if (failedSince == 0) failedSince = now;
+        else if (now - failedSince > 30 && now - failedWarnAt > 300) { failedWarnAt = now; Log.Warn($"status.json を {now - failedSince:F0} 秒間書けていません"); }
     }
+
+    double failedSince, failedWarnAt;
 }

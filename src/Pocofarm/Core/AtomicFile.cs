@@ -19,6 +19,13 @@ public static class AtomicFile
             catch (IOException) { Thread.Sleep(20); }
         }
         try { File.Delete(tmp); } catch (IOException) { }
-        return false;
+        // 置換できない状態が続いても、読み手は共有で開くので直接書き込めることが多い。心拍が止まって「停止」と誤判定されるよりよい
+        try
+        {
+            using var fs = new FileStream(path, FileMode.Create, FileAccess.Write, FileShare.ReadWrite | FileShare.Delete);
+            fs.Write(data);
+            return true;
+        }
+        catch (Exception e) when (e is IOException or UnauthorizedAccessException) { return false; }
     }
 }
