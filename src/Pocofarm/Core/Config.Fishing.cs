@@ -60,4 +60,12 @@ public sealed partial class Config
     [Desc("ウキ位置の履歴(見逃し調査用)に残すフレーム数")] public int TraceLength { get; set; } = 120;
     [Desc("試行の記録に付けるウキ位置の履歴のフレーム数(引いた時)")] public int AttemptTraceLength { get; set; } = 60;
     [Desc("失敗の記録に付けるウキ位置の履歴のフレーム数")] public int EvidenceTraceLength { get; set; } = 90;
+
+    [Desc("同じ状態でループ内エラーが何回続いたら、試行を捨てて投げ待ちへ戻すか")] public int StateErrorLimit { get; set; } = 5;
+    [Desc("投げ失敗がこの回数に達したら投げを止めて needs_attention にする(0 で止めない)")] public int CastFailStopCount { get; set; } = 10;
+    [Desc("進行監視(釣れない状態が続いたときの段階的な復旧)を有効にする")] public bool StallWatchdog { get; set; } = true;
+    [Desc("進行監視: 釣れない結果がこの回数続いたら停滞とみなす")] public int StallMissStreak { get; set; } = 15;
+    [Desc("進行監視: 釣果がない時間の下限[分]。実測の当たり待ち(95 パーセンタイル)× 倍率がこれより長ければそちらを使う")] public double StallNoCatchMinutes { get; set; } = 15;
+    [Desc("進行監視: 当たり待ち実測の 95 パーセンタイルに掛ける倍率")] public double StallWaitP95Factor { get; set; } = 8.0;
+    [Desc("進行監視: 次の段階へ進むまでの最短秒数")] public double StallTierGapSeconds { get; set; } = 120;
 }
