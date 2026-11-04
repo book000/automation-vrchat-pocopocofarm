@@ -70,24 +70,38 @@ public sealed class ToastReader(Config cfg)
     public void Clear() => sightings.Clear();
 
     /// <summary>結果不明の試行を、引いた後の直近の画像から再読取りして回復する。見つからなければ null。</summary>
-    public Toast? Recover(Attempt a)
+    /// <remarks>
+    /// OCR スレッドで実行する(RapidOCR は約 0.9 秒/枚で、主ループを止めないため)。同じ OCR スレッドに直列化されるので、
+    /// RapidOCR のエンジンを複数スレッドから同時に使うことにもならない。読む画像がなければ null。
+    /// </remarks>
+    public Task<RecoverResult>? RecoverAsync(Attempt a)
     {
         if (!cfg.RapidOcr) return null;
-        var window = crops.Where(c => c.T >= a.TClick - 0.1).Select(c => c.Crop).ToList();
+        var window = crops.Where(c => c.T >= a.TClick - 0.1).Select(c => c.Crop).ToList();     // 主スレッドで写しを取る
         if (window.Count == 0) return null;
-        foreach (var crop in window.Where((_, i) => i % Math.Max(1, window.Count / 6) == 0).Take(a.Probe ? 1 : 6))   // 確認クリックは通知なしが普通で、再読取り(約 0.9 秒/枚)の間は主ループが止まるため 1 枚だけ
+        bool probe = a.Probe;
+        return worker.Submit(() => RecoverJob(window, probe));
+    }
+
+    RecoverResult RecoverJob(List<Frame> window, bool probe)
+    {
+        var info = new List<string>();
+        foreach (var crop in window.Where((_, i) => i % Math.Max(1, window.Count / 6) == 0).Take(probe ? 1 : 6))   // 確認クリックは通知なしが普通なので 1 枚だけ
         {
             try
             {
                 var tt = Toast.Classify(Rapid.Read(crop), cfg.KnownFish);
                 if (tt is null) continue;
                 // レベルアップ/実績は結果ではない。釣れた根拠として控えるだけにして、釣果/早すぎ/逃げられた を探し続ける
-                if (tt.Kind is Toast.LevelUp or Toast.Achieve) { if (!a.Info.Contains(tt.Kind)) a.Info.Add(tt.Kind); continue; }
+                if (tt.Kind is Toast.LevelUp or Toast.Achieve) { if (!info.Contains(tt.Kind)) info.Add(tt.Kind); continue; }
                 Log.Info($"結果不明を再読取りで回復: {tt.Kind}");
-                return tt;
+                return new RecoverResult(tt, info);
             }
             catch (Exception ex) { Log.Exception("RapidOCR 再読取り失敗", ex); }
         }
-        return null;
+        return new RecoverResult(null, info);
     }
 }
+
+/// <summary>再読取りの結果。Info は同時に出たレベルアップ/実績通知。</summary>
+public sealed record RecoverResult(Toast? Toast, List<string> Info);

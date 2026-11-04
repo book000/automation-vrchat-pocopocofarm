@@ -26,11 +26,13 @@ public sealed record DipParams(
     double DipRatio = 0.45, double DipMinPx = 4.0, int DipFrames = 2, double LostSeconds = 0.12,
     double SettleSeconds = 0.5, double SettleRangePx = 4.0,
     double SettleFrames = 3.2, double SettleFramesAnchored = 2.2, double AnchoredSettleScale = 0.6, double InlierRatio = 0.8,
-    double FollowRate = 0.9, double MaxLateralPx = 40, double MaxLateralWidths = 4)
+    double FollowRate = 0.9, double MaxLateralPx = 40, double MaxLateralWidths = 4,
+    int LostGuardFrames = 0, int LostGuardSeen = 0)
 {
     public static DipParams From(Config c, double scale) => new(
         c.DipRatio, c.DipMinPx * scale, c.DipFrames, c.LostSecondsAsDip,
         c.SettleSeconds, c.SettleRangePx * scale,
         c.SettleFrames, c.SettleFramesAnchored, c.AnchoredSettleScale, c.SettleInlierRatio,
-        c.DipFollowRate, c.DipMaxLateralPx * scale, c.DipMaxLateralWidths);
+        c.DipFollowRate, c.DipMaxLateralPx * scale, c.DipMaxLateralWidths,
+        c.LostDipGuard ? c.LostDipGuardFrames : 0, c.LostDipGuardSeen);
 }

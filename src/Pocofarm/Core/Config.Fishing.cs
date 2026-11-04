@@ -60,4 +60,20 @@ public sealed partial class Config
     [Desc("ウキ位置の履歴(見逃し調査用)に残すフレーム数")] public int TraceLength { get; set; } = 120;
     [Desc("試行の記録に付けるウキ位置の履歴のフレーム数(引いた時)")] public int AttemptTraceLength { get; set; } = 60;
     [Desc("失敗の記録に付けるウキ位置の履歴のフレーム数")] public int EvidenceTraceLength { get; set; } = 90;
+
+    [Desc("同じ状態でループ内エラーが何回続いたら、試行を捨てて投げ待ちへ戻すか")] public int StateErrorLimit { get; set; } = 5;
+    [Desc("投げ失敗がこの回数に達したら投げを止めて needs_attention にする(0 で止めない)")] public int CastFailStopCount { get; set; } = 10;
+    [Desc("進行監視(釣れない状態が続いたときの段階的な復旧)を有効にする")] public bool StallWatchdog { get; set; } = true;
+    [Desc("進行監視: 釣れない結果がこの回数続いたら停滞とみなす")] public int StallMissStreak { get; set; } = 15;
+    [Desc("進行監視: 釣果がない時間の下限[分]。実測の当たり待ち(95 パーセンタイル)× 倍率がこれより長ければそちらを使う")] public double StallNoCatchMinutes { get; set; } = 15;
+    [Desc("進行監視: 当たり待ち実測の 95 パーセンタイルに掛ける倍率")] public double StallWaitP95Factor { get; set; } = 8.0;
+    [Desc("進行監視: 次の段階へ進むまでの最短秒数")] public double StallTierGapSeconds { get; set; } = 120;
+
+    [Desc("ウキを見失っただけの「沈み」を採用する前に、直前にウキが十分見えていたかを確かめる(実測で効果を確認できていないため既定は無効)")] public bool LostDipGuard { get; set; } = false;
+    [Desc("見失い沈みの確認: 見失う直前のこのフレーム数を調べる")] public int LostDipGuardFrames { get; set; } = 30;
+    [Desc("見失い沈みの確認: 調べたフレームのうちウキが見えていた数がこれ未満なら、見失い沈みを採用しない")] public int LostDipGuardSeen { get; set; } = 20;
+
+    [Desc("一時停止から再開するとき、最初のクリックの前に VRChat の状態を確認する")] public bool ResumeCheck { get; set; } = true;
+    [Desc("再開前の確認で VRChat が前面にあることも必須にする(OSC は背面でも届くので通常は不要)")] public bool ResumeRequireForeground { get; set; } = false;
+    [Desc("再開前の確認: キャプチャの最新フレームがこの秒数より古ければ保留する")] public double ResumeFrameMaxAge { get; set; } = 1.0;
 }

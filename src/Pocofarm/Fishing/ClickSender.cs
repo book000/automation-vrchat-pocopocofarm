@@ -14,10 +14,13 @@ public static class ClickKind
 /// ゲームへのクリック送信。OSC の Use で送るので、VRChat が背面でもフォーカスやカーソルを奪わない。
 /// 種別ごとの送信数を数え、送れなかったときは一定時間保留する。
 /// </summary>
-public sealed class ClickSender(Config cfg, Status status, bool dryRun)
+public sealed class ClickSender(Config cfg, Status status, bool initialDryRun)
 {
     readonly Dictionary<string, int> counts = [];
     double blockUntil;
+
+    /// <summary>true の間は実際には送らない(ダッシュボードから切り替えられる)。</summary>
+    public bool DryRun { get; set; } = initialDryRun;
 
     /// <summary>種別ごとの送信数。</summary>
     public IReadOnlyDictionary<string, int> Counts => counts;
@@ -42,7 +45,7 @@ public sealed class ClickSender(Config cfg, Status status, bool dryRun)
             Log.Warn($"クリック保留({kind}): {reason}");
             return false;
         }
-        if (dryRun) Log.Info($"[dry-run] クリック({kind})を送信したことにします");
+        if (DryRun) Log.Info($"[dry-run] クリック({kind})を送信したことにします");
         else Osc.Use(cfg.OscHoldMs, cfg.OscPort);
         counts[kind] = counts.GetValueOrDefault(kind) + 1;
         return true;

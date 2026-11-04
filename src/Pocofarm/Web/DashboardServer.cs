@@ -145,6 +145,7 @@ public static class DashboardServer
         });
 
         ExtraEndpoints.Map(app, paths, cfg);   // 自己点検・診断 zip・設定ツール
+        MapManualControl(app, paths);
 
         await app.StartAsync();
         Log.Info($"ダッシュボード起動: http://{host}:{port}/");
@@ -175,5 +176,21 @@ public static class DashboardServer
         var buf = new byte[fs.Length];
         fs.ReadExactly(buf);
         return buf;
+    }
+
+    // ---------------------------------------------------------------- 手動操作(再投げ・今すぐ引く・視点・ドライラン・予約停止)
+
+    /// <summary>手動操作を control.json へ書く。受け付けるかの判断(一時停止中・ドライラン中は拒否)は釣り側が行う。</summary>
+    static void MapManualControl(WebApplication app, Paths paths)
+    {
+        app.MapPost("/api/control", (HttpContext ctx, string? cmd, string? arg, int? amount) =>
+        {
+            if (!Private(ctx)) return Results.StatusCode(403);
+            if (cmd is not ("recast" or "reel_now" or "nudge" or "dry_run" or "pause_after_result" or "pause_until"))
+                return Results.BadRequest("unknown cmd");
+            Pocofarm.Fishing.ControlChannel.WriteCommand(paths, cmd, arg, amount ?? 0);
+            Log.Info($"ダッシュボードから手動操作 {cmd} {arg} ({ctx.Connection.RemoteIpAddress})");
+            return JsonResult(new { ok = true, cmd });
+        });
     }
 }

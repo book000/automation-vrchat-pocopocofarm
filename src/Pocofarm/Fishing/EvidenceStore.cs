@@ -31,11 +31,31 @@ public sealed class EvidenceStore
     /// <summary>フレームを縮小して非同期保存し、ファイル名を返す。frame は呼び出し側が以後触らないコピーを渡すこと。</summary>
     public string Save(Frame frame, string name, object meta, IReadOnlyList<Box>? boxes = null)
     {
+        if (name == "unclassified_toast" && !TryReserveUnclassified()) return "";
         var fname = $"{DateTime.Now.ToString("yyyyMMdd_HHmmss_fff", CultureInfo.InvariantCulture)}_{name}.jpg";
         var b = boxes?.ToList() ?? [];
         // キューが詰まっているときは古い証拠を優先して新しいものを諦める(釣りの処理を止めない)
         if (!queue.TryAdd(() => Write(frame, fname, meta, b))) Log.Warn($"証拠保存が詰まっているため破棄: {fname}");
         return fname;
+    }
+
+    /// <summary>unclassified_toast の証拠の上限。誤読の連発でディスクと掃除の負荷が増えるのを防ぐ。</summary>
+    internal const int UnclassifiedCap = 500;
+
+    int unclassifiedCount = -1;
+    readonly object capGate = new();
+
+    bool TryReserveUnclassified()
+    {
+        lock (capGate)
+        {
+            // 初回だけ既存の枚数を数える(掃除で減った分は次の起動で戻る)
+            if (unclassifiedCount < 0)
+                unclassifiedCount = Directory.Exists(dir) ? Directory.EnumerateFiles(dir, "*_unclassified_toast.jpg").Count() : 0;
+            if (unclassifiedCount >= UnclassifiedCap) return false;
+            unclassifiedCount++;
+            return true;
+        }
     }
 
     void Write(Frame img, string fname, object meta, List<Box> boxes)
