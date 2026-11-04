@@ -86,6 +86,8 @@ public sealed class Fisher
     readonly double startedAt = EventLog.Now();
     double lastTick = EventLog.Now();
     readonly ViewMotion viewMotion;
+    readonly AimRecovery aim;
+    int aimTriedFor;                    // 視点補正を試した時点の連続失敗数(同じ失敗数では 1 回だけ試す)
 
     public Fisher(Config cfg, Paths paths, bool dryRun = false, bool startPaused = false)
     {
@@ -103,6 +105,7 @@ public sealed class Fisher
         hud = new HudMonitor(cfg, paths, events, status);
         dip = NewDip();
         viewMotion = new ViewMotion(cfg.ViewMotionThreshold, cfg.ViewMotionHold);
+        aim = new AimRecovery(cfg, paths, events);
         control = new ControlChannel(cfg, paths, events, status, dryRun, startPaused);
         control.Resumed += OnResumed;
         recorder = new AttemptRecorder(cfg, events, status, SaveEvidence, auditor, control);
@@ -327,9 +330,53 @@ public sealed class Fisher
     /// <summary>投げ失敗が続いたら、画面を見ていなくても気づけるよう連続の最初の 1 回だけ通知する。</summary>
     void AlertCastFailures()
     {
-        if (castAlerted) return;
+        if (castAlerted || AimRecoverDue) return;      // 視点補正を試す前は通知しない(直れば通知は要らない。直らなければ補正のあとに通知する)
         castAlerted = true;
         Notify.Toast("ぽこぽこファーム", "投げが連続で失敗しています。視線を池に向けてください");
+    }
+
+    /// <summary>連続失敗が閾値に達していて、この失敗数ではまだ視点補正を試していない。</summary>
+    bool AimRecoverDue => cfg.AimRecover && !dryRun && aim.HasReference && castFailures >= cfg.CastFailAlertCount && aimTriedFor < castFailures;
+
+    /// <summary>
+    /// 視点が池からずれている疑い(連続失敗)があるとき、基準の画面との比較でマウスを動かして戻す。
+    /// 補正の間だけ VRChat を前面にし、終わったら元のウィンドウとカーソル位置へ戻す。直ったら true。
+    /// 直らなければ false を返し、呼び出し側は従来どおり通知と待ちに進む。
+    /// </summary>
+    bool TryAimRecover(Frame f)
+    {
+        aimTriedFor = castFailures;
+        if (cap is not { } capture || !WinApi.IsAlive(hwnd)) return false;
+        var prevFg = WinApi.ForegroundWindow();
+        var cursor = WinApi.CursorPos();
+        if (!WinApi.EnsureForeground(hwnd)) { Log.Warn("[aim] VRChat を前面にできないため視点補正を見送ります"); AlertCastFailures(); return false; }
+        Frame? grab = null; long seen = 0;
+        AimRecoverResult result;
+        try
+        {
+            result = aim.Recover(f, (dx, dy) =>
+            {
+                WinApi.MouseMove(dx, dy);
+                Thread.Sleep((int)(cfg.AimRecoverSettle * 1000));
+                capture.CopyLatestTo(ref grab, ref seen);
+                return grab is null ? null : ToWorkFrame(grab).Clone();     // 次の測定まで grab を書き換えられても崩れないよう複製
+            }, () => control.Poll());
+        }
+        finally
+        {
+            WinApi.MoveCursor(cursor.X, cursor.Y);
+            if (prevFg != 0 && prevFg != hwnd) WinApi.EnsureForeground(prevFg);
+        }
+        lastTick = Now;      // 補正に数秒かかるので、処理の途切れ(gap)と誤認させない
+        if (result == AimRecoverResult.Aligned)
+        {
+            castFailures = 0; castAlerted = false;
+            status.Set("message", "");
+            SetState(SCooldown, "aim_recovered");
+            return true;
+        }
+        AlertCastFailures();
+        return false;
     }
 
     /// <summary>ウキが静止して当たり待ち態勢に入ったとき。投げの成否を確認する。</summary>
@@ -414,6 +461,7 @@ public sealed class Fisher
         else RecordAttempt(outcome, best, f, a, a.PartialNote, a.Info.Count > 0 ? new() { ["info"] = a.Info.ToList() } : null);
         castVerified = true; unverifiedWait = cfg.UnverifiedWait;
         if (outcome == "caught" && !a.Probe && a.PosBefore is { } lp) { landings.Add((lp.X / (double)f.Width, lp.Y / (double)f.Height)); if (landings.Count > 15) landings.RemoveAt(0); }
+        if (outcome == "caught" && !a.Probe && castFailures == 0) aim.NoteCatch(f, now);      // 視点が合っていた証拠の画面を、補正の基準にする
         tuner.OnOutcome(outcome);
         attempt = null;
         SetState(SCooldown, outcome);
@@ -705,6 +753,7 @@ public sealed class Fisher
                 double wait = recorder.SessionAttempts > 0 ? cfg.RecastDelay : 0.5;
                 // ゲームは直前の引き(釣果)から約 1.8 秒は投げを受け付けない。結果の確定が早いと RecastDelay だけでは足りないので、引きクリックからも数える
                 if (fresh && ++learnTick % 8 == 0) LearnDecoys(f, b);
+                if (AimRecoverDue && TryAimRecover(f)) break;      // 連続失敗の原因が視点のずれなら、通知より先に自分で直す
                 if (now - tState >= wait && now - lastReelAt >= tuner.ReelToCast && now - recorder.LastCaughtAt >= cfg.AfterCatchCastMin && !StartupProbe(now, b)) StartCast(now, b);
                 break;
             }

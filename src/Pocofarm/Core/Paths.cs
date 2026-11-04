@@ -16,6 +16,8 @@ public sealed class Paths(string root)
     public string Reset => Path.Combine(Data, "reset.json");
     public string Calibration => Path.Combine(Data, "calibration.json");
     public string Tuning => Path.Combine(Data, "tuning.json");
+    /// <summary>視点補正の基準にする、釣れたときの画面(128x72 のグレー PNG)。</summary>
+    public string AimReference => Path.Combine(Data, "aim_reference.png");
     public string CameraPose => Path.Combine(Data, "camera_pose.json");
     public string Farm => Path.Combine(Data, "farm");
     public string Evidence => Path.Combine(Data, "evidence");

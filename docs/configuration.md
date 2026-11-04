@@ -78,6 +78,19 @@ Casting, waiting, reeling, recasting, and the automatic adjustment of those timi
 | `attempt_trace_length` | integer | `60` |  | Number of frames of bobber-position history attached to an attempt record (at reel time). |
 | `evidence_trace_length` | integer | `90` |  | Number of frames of bobber-position history attached to a failure record. |
 
+## View recovery
+
+Automatic correction of a view that has drifted off the pond (for example after the mouse was bumped). See [architecture](architecture.md#view-recovery) for how it works and its limits.
+
+| Key | Type | Default | Restart | Description |
+|---|---|---|---|---|
+| `aim_recover` | boolean | `true` |  | After `cast_fail_alert_count` casts fail in a row, measure the view's drift against the picture of the last good catch and turn the view back with relative mouse movement. VRChat is brought to the foreground only for the correction. Never runs with `--dry-run` or while paused. |
+| `aim_recover_max_steps` | integer | `8` |  | Maximum number of mouse corrections per attempt. After that the tool falls back to notifying you. |
+| `aim_recover_gain_init` | number | `800.0` |  | Initial mouse movement (counts) that turns the view by one screen width. The tool refines it from the observed response during an attempt (the vertical gain starts at 9/16 of it). |
+| `aim_recover_min_confidence` | number | `0.6` |  | Minimum match score (0 to 1) for a measurement to be trusted. A lower score means the reference scene is not on the screen and the attempt stops. |
+| `aim_recover_tolerance` | number | `0.02` |  | The view counts as aligned when the remaining drift is below this fraction of the screen width and height. |
+| `aim_recover_settle` | number | `0.6` |  | Seconds to wait after a mouse movement before the screen is captured again. |
+
 ## Bobber and dip detection
 
 Color thresholds, size limits, and settling rules for finding the bobber and detecting a bite. Pixel values are expressed at the reference resolution (1920x1009) and scale with the screen height.
