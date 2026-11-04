@@ -47,8 +47,17 @@ public sealed partial class Config
             try { if (JsonSerializer.Deserialize(node.ToJsonString(), p.PropertyType, Json) is { } v) p.SetValue(cfg, v); }
             catch (JsonException) { if (warn) Log.Warn($"config.json: {key} の値の形式が違うため既定値を使います"); }
         }
+        cfg.AddMissingFish();
         cfg.Sanitize(warn);
         return cfg;
+    }
+
+    /// <summary>古い config.json は釣れる魚の一覧が当時の分しか無いので、既定にある魚と売値のうち足りないものを補う(消された魚は戻る)。</summary>
+    void AddMissingFish()
+    {
+        var d = new Config();
+        foreach (var f in d.KnownFish) if (!KnownFish.Contains(f)) KnownFish.Add(f);
+        foreach (var (f, c) in d.FishCoins) FishCoins.TryAdd(f, c);
     }
 
     /// <summary>

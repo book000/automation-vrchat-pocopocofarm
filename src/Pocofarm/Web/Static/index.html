@@ -255,16 +255,25 @@ const EXT=(()=>{
     let i=0;for(let k=0;k<c.length;k++)if(c[k].t<=t)i=k;
     return m+(i+Math.min(1,(t-c[i].t)/w))*step;
   }
+  // 既定では重要なものだけ縦線にする(全部出すとグラフが読めない)。凡例のクリックで種類ごとに切り替え、選択は保存する
+  let MKON;
+  try{MKON=new Set(JSON.parse(localStorage.getItem('mkon')||'null')||['reset','update','config'])}catch(e){MKON=new Set(['reset','update','config'])}
   function mk(xOf,y1){
-    const ms=(S&&S.markers)||[];
-    return ms.map(q=>{const x=xOf(q.t);if(x==null)return '';const c=MKC[q.kind]||'#888';
-      return `<line x1="${x}" x2="${x}" y1="2" y2="${y1}" stroke="${c}" stroke-width="1.5" stroke-dasharray="3 2"><title>${hhmm(q.t,true)} ${esc(q.label)}</title></line>`}).join('');
+    const ms=((S&&S.markers)||[]).filter(q=>MKON.has(q.kind)),seen=new Set();
+    return ms.map(q=>{const x=xOf(q.t);if(x==null)return '';const key=q.kind+Math.round(x/5);if(seen.has(key))return '';seen.add(key);const c=MKC[q.kind]||'#888';
+      return `<line x1="${x}" x2="${x}" y1="2" y2="${y1}" stroke="${c}" stroke-width="1" stroke-opacity=".7" stroke-dasharray="3 3"><title>${hhmm(q.t,true)} ${esc(q.label)}</title></line>`}).join('');
+  }
+  function mkToggle(kind){
+    MKON.has(kind)?MKON.delete(kind):MKON.add(kind);
+    try{localStorage.setItem('mkon',JSON.stringify([...MKON]))}catch(e){}
+    markerLegend();if(typeof tick==='function')tick();
   }
   function markerLegend(){
     const ks=[...new Set(((S&&S.markers)||[]).map(q=>q.kind))];
     const el=$('legend');if(!el)return;
     let k=$('mkleg');if(!k){k=document.createElement('div');k.id='mkleg';k.className='mkleg';el.after(k)}
-    k.innerHTML=ks.length?'縦線: '+ks.map(x=>`<span><i style="border-color:${MKC[x]}"></i>${MKJ[x]||x}</span>`).join(''):'';
+    k.innerHTML=ks.length?'縦線(クリックで表示切替): '+ks.map(x=>`<span data-k="${x}" style="cursor:pointer;opacity:${MKON.has(x)?1:.4}"><i style="border-color:${MKC[x]}"></i>${MKJ[x]||x}</span>`).join(''):'';
+    k.onclick=e=>{const sp=e.target.closest('span[data-k]');if(sp)mkToggle(sp.dataset.k)};
   }
   function health(d){
     const h=d.health,b=$('hbadge');if(!h){b.hidden=true;return}

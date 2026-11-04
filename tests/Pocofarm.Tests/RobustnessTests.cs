@@ -21,6 +21,18 @@ public class RobustnessTests : IDisposable
     }
 
     [Fact]
+    public void Config_OldFishList_GetsMissingFishAdded()
+    {
+        var file = Path.Combine(dir, "config.json");
+        File.WriteAllText(file, """{ "known_fish": ["フナ", "ドジョウ"], "fish_coins": { "フナ": 99 } }""");
+        var cfg = Config.Load(file, false);
+        Assert.Contains("サケ", cfg.KnownFish);
+        Assert.Contains("エビ", cfg.KnownFish);
+        Assert.Equal(99, cfg.FishCoins["フナ"]);      // 利用者が書いた売値は残す
+        Assert.Equal(8000, cfg.FishCoins["マグロ"]);
+    }
+
+    [Fact]
     public void AtomicFile_OverwritesExistingFile()
     {
         var path = Path.Combine(dir, "a.json");
