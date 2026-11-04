@@ -50,7 +50,7 @@ public sealed class Fisher
     Attempt? attempt;
     Bobber? bobber;
     int auditTick;
-    readonly List<(int X, int Y)> landings = [];     // 釣れたときのウキ位置。自分のウキは毎回ほぼ同じ場所に着水する
+    readonly List<(double X, double Y)> landings = [];     // 釣れたときのウキ位置(画面に対する比率。ウィンドウの大きさが変わっても使える)。自分のウキは毎回ほぼ同じ場所に着水する
     List<(int, int, int, int)> decoys = [];     // 投げる前から画面にあったウキ候補(他人のウキ・アバターの赤白)。投げ後は探索から除く
     (int X, int Y)? lastPos, castOrigin, expectAway, anchorPos;     // anchorPos: 直近に静止を確認した位置(再開後などで本物のウキを優先して探す)
     bool castMoved;
@@ -385,7 +385,7 @@ public sealed class Fisher
         if (a.Probe && outcome is "early" or "escaped") RecordAttempt("no_bite_reset", best, f, a, outcome == "early" ? "当たりなしで引き直した" : "確認クリックで逃げられた表示(停止中に当たりが過ぎた)");
         else RecordAttempt(outcome, best, f, a, a.PartialNote, a.Info.Count > 0 ? new() { ["info"] = a.Info.ToList() } : null);
         castVerified = true; unverifiedWait = cfg.UnverifiedWait;
-        if (outcome == "caught" && !a.Probe && a.PosBefore is { } lp) { landings.Add(lp); if (landings.Count > 15) landings.RemoveAt(0); }
+        if (outcome == "caught" && !a.Probe && a.PosBefore is { } lp) { landings.Add((lp.X / (double)f.Width, lp.Y / (double)f.Height)); if (landings.Count > 15) landings.RemoveAt(0); }
         tuner.OnOutcome(outcome);
         attempt = null;
         SetState(SCooldown, outcome);
@@ -394,11 +394,11 @@ public sealed class Fisher
     // ---------------------------------------------------------------- メインループ
 
     /// <summary>直近の釣果 5 件以上の位置の中央値。足りなければ null。</summary>
-    (int X, int Y)? LearnedLanding()
+    (int X, int Y)? LearnedLanding(Frame f)
     {
         if (landings.Count < 5) return null;
         var xs = landings.Select(l => l.X).Order().ToList(); var ys = landings.Select(l => l.Y).Order().ToList();
-        return (xs[xs.Count / 2], ys[ys.Count / 2]);
+        return ((int)(xs[xs.Count / 2] * f.Width), (int)(ys[ys.Count / 2] * f.Height));
     }
 
     /// <summary>直近のウキ位置の履歴に、中央値より 5px(基準解像度)以上下がったフレームが 3 つ以上あるか(魚が掛かった沈み)。</summary>
@@ -428,7 +428,7 @@ public sealed class Fisher
         if (b is not null && state is SWaitBite or SCastWait && ++auditTick % cfg.BobberAuditFrames == 0 && !HasRecentDips())
         {
             Bobber? g;
-            if (LearnedLanding() is { } land)
+            if (LearnedLanding(f) is { } land)
             {
                 // 着水位置が学習できているときは、そこから外れた追跡対象だけを、着水位置の候補へ乗り換える(他人のアバターへの乗り換えを防ぐ)
                 int far = (int)(cfg.BobberNearPx * scale * 3);
@@ -451,7 +451,7 @@ public sealed class Fisher
             }
         }
         // 追跡できていないときは、まず学習済みの着水位置の周辺だけを探す(画面全体の他人のウキ・アバターに惑わされない)
-        if (b is null && state is SWaitBite or SCastWait && LearnedLanding() is { } home)
+        if (b is null && state is SWaitBite or SCastWait && LearnedLanding(f) is { } home)
             b = BobberDetector.Detect(f, region, home, radius: (int)(cfg.BobberNearPx * scale * 4), exclude: ex, scale: scale, p: bp, maxWidth: narrow);
         b ??= BobberDetector.Detect(f, region, null, exclude: ex, scale: scale, p: bp, maxWidth: narrow);
         return b ?? BobberDetector.Detect(f, region, null, exclude: ex, scale: scale, p: bp);
