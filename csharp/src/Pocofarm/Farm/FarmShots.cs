@@ -72,7 +72,7 @@ public sealed partial class FarmShots(Paths paths, Config cfg, IFishingControl d
             NextAt = cfg.FarmShotInterval > 0 ? since + cfg.FarmShotInterval : 0;
             await Task.Delay(NextPollMs, ct);
             if (cfg.FarmShotInterval <= 0) since = EventLog.Now();
-            else if (EventLog.Now() - since >= cfg.FarmShotInterval) return true;
+            else if (EventLog.Now() - since >= cfg.FarmShotInterval && (!cfg.FarmShotForegroundOnly || WinApi.IsForeground(WinApi.FindWindow(cfg.WindowTitle)))) return true;   // 前面でなければ、前面になるまで撮影を待つ(フォーカスを奪わない)
         }
         return false;
     }

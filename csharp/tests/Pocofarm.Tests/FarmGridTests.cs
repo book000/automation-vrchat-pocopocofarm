@@ -24,6 +24,13 @@ public class FarmGridTests
     }
 
     [Fact]
+    public void TwoMiddlePlotsMissingInTopRow_AreFilledFromBottomRowPitch()
+    {
+        var s = Scan("top_middle_two_missing.jpg");
+        Assert.Equal(8, s.Plots.Count);
+    }
+
+    [Fact]
     public void HalfPlanted_UpperEmptyLowerWatered()
     {
         var s = Scan("half_planted.jpg");

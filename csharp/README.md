@@ -80,6 +80,6 @@ curl -X POST http://<host>:10000/api/config -d '{"farm_shot_interval":900,"pecks
 
 
 ## ファーム定点写真(Spout)
-`farm_shot_interval`(既定 600 秒、0 で無効)ごとに、釣れた直後(cooldown)に釣りを約 7 秒止め、Esc → カメラ → Stream Camera を画面確認つきで操作してカメラを開き、OSC で `Streaming` を入れて Spout の共有テクスチャを自分で読み取って JPEG にし、`Streaming` を切ってカメラを閉じて再開する。写真は直近 `farm_keep_shots` 枚(既定 12)だけ `data/farm/` に残る。VRChat の OSC を有効にしておくこと。
+`farm_shot_interval`(既定 600 秒、0 で無効)ごとに(VRChat が前面にあるときだけ。`farm_shot_foreground_only` で変更可。背面なら前面になるまで待つ)、釣れた直後(cooldown)に釣りを約 7 秒止め、Esc → カメラ → Stream Camera を画面確認つきで操作してカメラを開き、OSC で `Streaming` を入れて Spout の共有テクスチャを自分で読み取って JPEG にし、`Streaming` を切ってカメラを閉じて再開する。写真は直近 `farm_keep_shots` 枚(既定 12)だけ `data/farm/` に残る。VRChat の OSC を有効にしておくこと。
 
 実測した仕様: `/usercamera/*` の OSC はカメラが開いている間だけ効く。Spout にファームが映るのはカメラが開いている間だけ。配信中は VRChat の HUD(レベル・釣果)が消えるので、撮影の間以外は配信しない。想定外の画面なら何もクリックせず中止する。ダッシュボードの `POST /api/farm/shoot` で即時撮影もできる。

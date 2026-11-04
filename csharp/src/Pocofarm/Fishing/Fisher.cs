@@ -50,6 +50,7 @@ public sealed class Fisher
     Attempt? attempt;
     Bobber? bobber;
     int auditTick;
+    readonly List<(int X, int Y)> landings = [];     // 釣れたときのウキ位置。自分のウキは毎回ほぼ同じ場所に着水する
     List<(int, int, int, int)> decoys = [];     // 投げる前から画面にあったウキ候補(他人のウキ・アバターの赤白)。投げ後は探索から除く
     (int X, int Y)? lastPos, castOrigin, expectAway, anchorPos;     // anchorPos: 直近に静止を確認した位置(再開後などで本物のウキを優先して探す)
     bool castMoved;
@@ -384,12 +385,31 @@ public sealed class Fisher
         if (a.Probe && outcome is "early" or "escaped") RecordAttempt("no_bite_reset", best, f, a, outcome == "early" ? "当たりなしで引き直した" : "確認クリックで逃げられた表示(停止中に当たりが過ぎた)");
         else RecordAttempt(outcome, best, f, a, a.PartialNote, a.Info.Count > 0 ? new() { ["info"] = a.Info.ToList() } : null);
         castVerified = true; unverifiedWait = cfg.UnverifiedWait;
+        if (outcome == "caught" && !a.Probe && a.PosBefore is { } lp) { landings.Add(lp); if (landings.Count > 15) landings.RemoveAt(0); }
         tuner.OnOutcome(outcome);
         attempt = null;
         SetState(SCooldown, outcome);
     }
 
     // ---------------------------------------------------------------- メインループ
+
+    /// <summary>直近の釣果 5 件以上の位置の中央値。足りなければ null。</summary>
+    (int X, int Y)? LearnedLanding()
+    {
+        if (landings.Count < 5) return null;
+        var xs = landings.Select(l => l.X).Order().ToList(); var ys = landings.Select(l => l.Y).Order().ToList();
+        return (xs[xs.Count / 2], ys[ys.Count / 2]);
+    }
+
+    /// <summary>直近のウキ位置の履歴に、中央値より 5px(基準解像度)以上下がったフレームが 3 つ以上あるか(魚が掛かった沈み)。</summary>
+    bool HasRecentDips()
+    {
+        var ys = trace.TakeLast(60).Where(x => x.Y > 0).Select(x => x.Y).ToList();
+        if (ys.Count < 10) return false;
+        ys.Sort();
+        int med = ys[ys.Count / 2];
+        return ys.Count(y => y - med >= 5 * scale) >= 3;
+    }
 
     Bobber? DetectBobber(Frame f)
     {
@@ -404,10 +424,24 @@ public sealed class Fisher
         var b = anchorPos is { } a ? BobberDetector.Detect(f, region, a, exclude: ex, scale: scale, p: bp, maxWidth: narrow) : null;
         if (b is null && lastPos is { } n) b = BobberDetector.Detect(f, region, n, exclude: ex, scale: scale, p: bp, maxWidth: narrow);
         // 追跡中の物が他人のアバターの赤白(静止していて沈みも出ない偽物)だと、近傍探索は永久にそれを返す。時々全体を探し直し、明らかに本物らしい物があれば乗り換える
-        if (b is not null && state is SWaitBite or SCastWait && ++auditTick % cfg.BobberAuditFrames == 0)
+        // 直近に沈みが出ている追跡対象は本物なので乗り換えない(他人のウキの方が点数が高くても、乗り換えで沈み判定が毎回やり直しになり見逃す)
+        if (b is not null && state is SWaitBite or SCastWait && ++auditTick % cfg.BobberAuditFrames == 0 && !HasRecentDips())
         {
-            var g = BobberDetector.Detect(f, region, null, exclude: ex, scale: scale, p: bp, maxWidth: narrow);
-            if (g is not null && g.Score > b.Score * cfg.BobberSwitchRatio && Math.Abs(g.X - b.X) + Math.Abs(g.Y - b.Y) > cfg.BobberNearPx * scale * 2)
+            Bobber? g;
+            if (LearnedLanding() is { } land)
+            {
+                // 着水位置が学習できているときは、そこから外れた追跡対象だけを、着水位置の候補へ乗り換える(他人のアバターへの乗り換えを防ぐ)
+                int far = (int)(cfg.BobberNearPx * scale * 3);
+                bool onLanding = Math.Abs(b.X - land.X) <= far && Math.Abs(b.Y - land.Y) <= far;
+                g = onLanding ? null : BobberDetector.Detect(f, region, land, exclude: ex, scale: scale, p: bp, maxWidth: narrow);
+                if (g is not null && (Math.Abs(g.X - land.X) > far || Math.Abs(g.Y - land.Y) > far)) g = null;
+            }
+            else
+            {
+                g = BobberDetector.Detect(f, region, null, exclude: ex, scale: scale, p: bp, maxWidth: narrow);
+                if (g is not null && !(g.Score > b.Score * cfg.BobberSwitchRatio)) g = null;
+            }
+            if (g is not null && Math.Abs(g.X - b.X) + Math.Abs(g.Y - b.Y) > cfg.BobberNearPx * scale * 2)
             {
                 Log.Warn($"追跡中のウキ候補 ({b.X},{b.Y}) 点={b.Score} より ({g.X},{g.Y}) 点={g.Score} が本物らしいので乗り換えます");
                 anchorPos = null; lastPos = null; castOrigin = null; startupAdopt = true;

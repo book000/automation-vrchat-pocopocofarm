@@ -160,10 +160,12 @@ public static class FarmGrid
         // 畑は 2 段に並ぶ。机などが紛れて段が増えたら、畑の多い 2 段だけを残す
         if (rows.Count > 2) rows = rows.OrderByDescending(r => r.Count).Take(2).OrderBy(r => Cy(r[0])).ToList();
         var result = new List<(int X, int Y)[]>();
+        foreach (var row in rows) row.Sort((a, b) => Cx(a).CompareTo(Cx(b)));
+        // 畑の間隔は、4 面そろった段があればそれを基準にする(欠けた段だけでは、離れた 2 面の間隔を 1 面分と取り違える)
+        double? refPitch = rows.Where(r => r.Count == 4).Select(r => (Cx(r[^1]) - Cx(r[0])) / 3).DefaultIfEmpty(0).Max() is var rp and > 0 ? rp : null;
         foreach (var row in rows)
         {
-            row.Sort((a, b) => Cx(a).CompareTo(Cx(b)));
-            if (row.Count is 2 or 3) FillRow(row, imgW);
+            if (row.Count is 2 or 3) FillRow(row, imgW, refPitch);
             result.AddRange(row);
         }
         return result;
@@ -173,13 +175,17 @@ public static class FarmGrid
     static double Cy((int X, int Y)[] q) => q.Average(p => p.Y);
 
     /// <summary>4 面並ぶはずの行で欠けた畑を、隣の畑を平行移動して補う。端は画像内に収まる側だけに補う。</summary>
-    static void FillRow(List<(int X, int Y)[]> row, int imgW)
+    static void FillRow(List<(int X, int Y)[]> row, int imgW, double? refPitch = null)
     {
         var gaps = Enumerable.Range(0, row.Count - 1).Select(i => Cx(row[i + 1]) - Cx(row[i])).ToList();
-        double pitch = gaps.Min();
+        double pitch = refPitch ?? gaps.Min();
         double width = row.Average(q => q.Max(p => p.X) - q.Min(p => p.X));
+        // 間が空いた分だけ等間隔に補う(中の畑が 2 面とも落ちた場合も含む)
         for (int i = row.Count - 2; i >= 0; i--)
-            if (gaps[i] > 1.5 * pitch && row.Count < 4) row.Insert(i + 1, Shift(row[i], (int)Math.Round(gaps[i] / 2)));
+        {
+            int missing = (int)Math.Round(gaps[i] / pitch) - 1;
+            for (int k = missing; k >= 1 && row.Count < 4; k--) row.Insert(i + 1, Shift(row[i], (int)Math.Round(gaps[i] * k / (missing + 1))));
+        }
         // 端の欠け: 画像内に収まる側が一方だけなら、4 面になるまでそちらへ補う(アバターで隣の畑が 2 面つながって落ちた場合など)
         while (row.Count < 4)
         {
