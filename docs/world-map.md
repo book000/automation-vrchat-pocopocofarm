@@ -41,7 +41,7 @@ the board.
 | Melon (メロン) | 5 h | 800 | 1 | - | Level 50 |
 
 Seeds can be upgraded per crop (the board shows "たね Lv 6/7" style levels), which shortens the growth time and raises
-the sell value. The page navigation buttons ("まえ" / "つぎ") flip between pages of the shop.
+the sell value (see [Seed levels](seed-levels.md)). The page navigation buttons ("まえ" / "つぎ") flip between pages of the shop.
 
 ### Tools ("どうぐ")
 

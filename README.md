@@ -106,6 +106,7 @@ Details are in [Architecture](docs/architecture.md).
 - [Troubleshooting](docs/troubleshooting.md)
 - [Development](docs/development.md)
 - [World map](docs/world-map.md): what is where in the world, boards, crops, fish and prices
+- [Seed levels](docs/seed-levels.md): what each seed level changes (growth time, price, harvest, requirements)
 - [How the world works](docs/world-mechanics.md): bite timing, toasts, OSC and capture facts for automation authors
 - [Fishing analysis](docs/analysis-fishing.md) and [farm analysis](docs/analysis-farm.md): statistics from a recorded run
 - [Automation guide](docs/automation-guide.md): ranked recommendations and how to reproduce the statistics
