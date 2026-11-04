@@ -18,13 +18,13 @@ The worker runs the Kestrel dashboard on its own threads and the fishing loop (`
 | Directory | Responsibility |
 |---|---|
 | `Program.cs`, `Cli/` | Entry point and sub-commands: `Supervisor` (resident mode), `RunCommand` (worker), `Diagnostics` (`doctor`, `capture-test`, `ocr-image`, `bench-ocr`), `Maintenance` (`cleanup`, `init-config`, `setup`). |
-| `Core/` | Parts that do not depend on the screen: `Config*.cs` (settings, split by area), `Layout` (per-resolution regions), `Toast` (classification of OCR text), `Events` (the event log), `Stats`, `Status`, `AtomicFile`, `Paths`, `Frame`. |
+| `Core/` | Parts that do not depend on the screen: `Config*.cs` (settings, split by area), `Layout` (per-resolution regions), `Toast` (classification of OCR text), `Events` (the event log), `Stats` (statistics, daily/weekly summary, level ETA), `Health` (rolling anomaly detector), `Markers` (chart markers from events), `Status`, `AtomicFile`, `Paths`, `Frame`. |
 | `Vision/` | `BobberDetector` (red stick plus white ball), `DipDetector` (settle and dip decision), `BobberParams`, `ViewMotion` (camera movement detection), `ViewAligner` (view drift measurement for [view recovery](#view-recovery)), `Hud` and `IconFinder`. |
 | `Fishing/` | `Fisher` (the state machine) and its collaborators: `AutoTuner`, `AttemptRecorder`, `ToastReader`, `HudMonitor`, `ControlChannel`, `ClickSender`, `AimRecovery`, `Auditor`, `NekoCollector`, `LoopProfiler`, `EvidenceStore`. |
-| `Farm/` | Farm photos: `FarmShots` (scheduling and the capture sequence), `SpoutCamera` (opens the in-game camera), `SpoutReceiver` (reads the shared texture), `FarmGrid` (plot analysis), `FarmCalibration` (camera framing), `Osc` (OSC sender). |
+| `Farm/` | Farm photos: `FarmShots` (scheduling and the capture sequence), `SpoutCamera` (opens the in-game camera), `SpoutReceiver` (reads the shared texture), `FarmGrid` (plot analysis), `FarmWatch` (plot state timeline and alerts), `FarmCalibration` (camera framing), `Osc` (OSC sender). |
 | `Platform/` | Windows integration: `WgcCapture` (Windows.Graphics.Capture), `WinApi` (window lookup, foreground handling, key state), `Imaging`, `Notify` (toast notifications), `Firewall`, `SelfUpdate`. |
 | `Ocr/` | `WinOcr` (Windows OCR), `PpOcr` (PP-OCRv6 through ONNX Runtime), `HudLocator` (finds the "Lv" label to realign the HUD regions). |
-| `Web/` | `DashboardServer` (Kestrel endpoints), `Dashboard` (state building), and `Static/index.html`, embedded into the executable. |
+| `Web/` | `DashboardServer` (Kestrel endpoints), `Dashboard` (state building; `Dashboard.Ext.cs` assembles summary, progress, health, farm alerts and markers), `Triage` (failure grouping), and `Static/index.html`, embedded into the executable. |
 
 Design rule: thresholds and intervals are `Config` properties with a `[Desc]` description (detectors receive them through records such as `BobberParams`). `Fisher` only owns state transitions; recording, OCR, tuning and control are delegated to the collaborator classes.
 
@@ -135,7 +135,7 @@ Clicks are the OSC input `/input/UseRight` sent over UDP to `127.0.0.1:osc_port`
 
 ### Other event types
 
-`session_start`, `pause`, `resume`, `hud`, `hud_calibrated`, `slow_cycle` (an attempt took longer than `slow_cycle_seconds`), `gap` (the loop stalled), `desync` (state mismatch such as an ineffective reel), `audit_mismatch`, `error`, `neko`, `toast_info`, `toast_unlinked`, `toast_unclassified`, `toast_other`, `farm_scan` and `farm_calibration`. Every line of `data/events.jsonl` has `ts` (ISO 8601 with offset) and `type`.
+`session_start`, `pause`, `resume`, `hud`, `hud_calibrated`, `slow_cycle` (an attempt took longer than `slow_cycle_seconds`), `gap` (the loop stalled), `desync` (state mismatch such as an ineffective reel), `audit_mismatch`, `error`, `neko`, `toast_info`, `toast_unlinked`, `toast_unclassified`, `toast_other`, `farm_scan` (now also carries `cells`, the 12-cell string of every plot) and `farm_calibration`. Operational events written outside the fishing loop: `config_change` (dashboard), `self_update` (supervisor), `tune` (auto-tuner: `what`, `from`, `to`) and `farm_alert`. `EventLog.Note` appends one such event without scanning the file. Every line of `data/events.jsonl` has `ts` (ISO 8601 with offset) and `type`.
 
 ## Farm photos
 
