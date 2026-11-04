@@ -1,4 +1,4 @@
-using Xunit;
+namespace Pocofarm.Tests;
 
 public class SmokeTests
 {

@@ -82,14 +82,14 @@ public class MoreTests : IDisposable
         Assert.True(File.Exists(nw)); Assert.False(File.Exists(old));
         for (int i = 0; i < 3; i++) { var p = Path.Combine(dir, $"s{i}.jpg"); File.WriteAllBytes(p, new byte[600]); File.SetLastWriteTimeUtc(p, DateTime.UtcNow.AddMinutes(-3 + i)); }
         Assert.Equal(2, EvidenceStore.CleanupDir(dir, 3600, 1000));       // 古い順に容量上限まで削除される
-        Assert.Equal(["new.jpg", "s2.jpg"], Directory.GetFiles(dir).Select(Path.GetFileName).Order().ToArray());
+        Assert.Equal(["new.jpg", "s2.jpg"], Directory.GetFiles(dir).Select(f => Path.GetFileName(f)!).Order().ToArray());
     }
 
     [Fact]
     public void EventIndex_ReadsOnlyCompleteLines()
     {
         var path = Path.Combine(dir, "events.jsonl");
-        var ts = DateTimeOffset.Now.ToString("yyyy-MM-dd'T'HH:mm:ss.fffzzz");
+        var ts = DateTimeOffset.Now.ToString("yyyy-MM-dd'T'HH:mm:ss.fffzzz", System.Globalization.CultureInfo.InvariantCulture);
         File.WriteAllText(path, $"{{\"ts\":\"{ts}\",\"type\":\"a\"}}\n{{\"ts\":\"");
         var idx = new EventIndex(path);
         Assert.Single(idx.Refresh());                       // 書きかけの行は次回に回す

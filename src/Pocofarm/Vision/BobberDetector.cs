@@ -13,7 +13,7 @@ public static class BobberDetector
 
     const byte Red = 1, White = 2, Scanned = 4;
 
-    [ThreadStatic] static byte[] flags = [];
+    [ThreadStatic] static byte[]? flags;
 
     static int R(double v) => (int)Math.Round(v, MidpointRounding.ToEven);
 

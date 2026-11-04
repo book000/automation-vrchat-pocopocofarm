@@ -13,3 +13,26 @@ indent_size = 4
 [*.{json,xml,csproj,slnx,yml,yaml,html}]
 indent_style = space
 indent_size = 2
+
+# --- アナライザーの抑制(Release は警告をエラー扱いにするため、理由付きで個別に外す) ---
+
+[*.cs]
+# CA1001: ToastReader / HudMonitor / EvidenceStore / PpOcr / Fisher は常駐プロセスの寿命と同じ所有物で、Dispose を呼ぶ経路が無い。
+# 所有者(Fishing/Fisher.cs など)の整理待ちの負債。
+dotnet_diagnostic.CA1001.severity = none
+
+[src/Pocofarm/Cli/Supervisor.cs]
+# 負債: Cli の所有者側で定数配列をフィールド化したら外す。
+dotnet_diagnostic.CA1861.severity = none
+
+[src/Pocofarm/Web/Dashboard.cs]
+# 負債: Web の所有者側でパラメーター名を揃えたら外す。
+dotnet_diagnostic.CA1725.severity = none
+
+[tests/**.cs]
+# テスト名は Method_Scenario_Expected 形式(アンダースコア)を許す。
+dotnet_diagnostic.CA1707.severity = none
+# 一時ディレクトリを消すだけの Dispose / 定数配列 / インスタンスメンバーはテストでは問題にしない。
+dotnet_diagnostic.CA1816.severity = none
+dotnet_diagnostic.CA1822.severity = none
+dotnet_diagnostic.CA1861.severity = none

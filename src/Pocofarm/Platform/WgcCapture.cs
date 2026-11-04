@@ -121,7 +121,7 @@ public sealed unsafe class WgcCapture : IDisposable
             }
             finally { Marshal.Release(factory); }
         }
-        finally { WindowsDeleteString(cls); }
+        finally { _ = WindowsDeleteString(cls); }
     }
 
     void OnFrame(Direct3D11CaptureFramePool sender, object args)

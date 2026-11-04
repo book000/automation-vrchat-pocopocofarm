@@ -5,6 +5,7 @@ namespace Pocofarm.Core;
 /// <summary>試行イベントから調整・運用向けの統計を計算する(ダッシュボード用の純粋関数)。</summary>
 public static class Stats
 {
+    static readonly int[] WithinCounts = [10, 50, 100];
 
     static double R1(double v) => Math.Round(v, 1);
 
@@ -130,7 +131,7 @@ public static class Stats
             rareObj = new Dictionary<string, object?>
             {
                 ["fish"] = rare["fish"],
-                ["within"] = new[] { 10, 50, 100 }.ToDictionary(m => m.ToString(), m => (int)Math.Round((1 - Math.Pow(1 - rp, m)) * 100)),
+                ["within"] = WithinCounts.ToDictionary(m => m.ToString(), m => (int)Math.Round((1 - Math.Pow(1 - rp, m)) * 100)),
             };
         }
         return new()
