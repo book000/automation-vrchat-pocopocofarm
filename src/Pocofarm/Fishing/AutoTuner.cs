@@ -32,7 +32,7 @@ public sealed class AutoTuner
                 failedAt = (double?)o["failed_at"];
             }
         }
-        catch (Exception ex) when (ex is IOException or JsonException or InvalidCastException) { }
+        catch (Exception ex) when (ex is IOException or JsonException or InvalidCastException) { Log.Warn($"{Path.GetFileName(file)} を読めないため、自動調整を初期値からやり直します: {ex.Message}"); }
     }
 
     /// <summary>何回目の沈みで引くか。</summary>
