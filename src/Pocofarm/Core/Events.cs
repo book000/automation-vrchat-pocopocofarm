@@ -25,6 +25,9 @@ public sealed class EventLog
     /// <summary>このセッションで書いた試行イベント(集計用)。毎回ファイル全体を読み直さずに済ませる。</summary>
     public List<JsonObject> SessionAttempts { get; } = [];
 
+    /// <summary>メモリ上に持つ試行の上限。超えたら古い 1 割を捨てる(長時間の連続稼働で増え続けないように)。</summary>
+    const int MaxSessionAttempts = 50000;
+
     /// <summary>このセッションの開始時刻(epoch 秒)。リセットで更新される。</summary>
     public double SessionStart { get; private set; } = Now();
 
@@ -32,8 +35,21 @@ public sealed class EventLog
     {
         this.path = path;
         Directory.CreateDirectory(Path.GetDirectoryName(path)!);
-        seq = LastSeq();
+        seq = LastSeq();      // 退避しても試行番号は続ける
+        try
+        {
+            if (File.Exists(path) && new FileInfo(path).Length > MaxFileBytes)
+            {
+                var dir = Path.Combine(Path.GetDirectoryName(path)!, "archive");
+                Directory.CreateDirectory(dir);
+                File.Move(path, Path.Combine(dir, $"events_{DateTime.Now:yyyyMMdd_HHmmss}.jsonl"), true);
+            }
+        }
+        catch (IOException e) { Log.Warn($"events.jsonl の退避に失敗しました: {e.Message}"); }
     }
+
+    /// <summary>起動時にこのサイズを超えていれば data/archive へ退避する。</summary>
+    const long MaxFileBytes = 64L * 1024 * 1024;
 
     public static double Now() => DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() / 1000.0;
 
@@ -80,7 +96,7 @@ public sealed class EventLog
             }
             seq = 0;
             SessionStart = Now();
-            lock (SessionAttempts) SessionAttempts.Clear();
+            lock (SessionAttempts) { SessionAttempts.Clear(); attemptVersion++; }
             return dest;
         }
     }
@@ -99,7 +115,7 @@ public sealed class EventLog
         foreach (var (k, v) in fields) rec[k] = v;
         var line = JsonSerializer.Serialize(rec, Opt);
         lock (gate) Append(line);
-        if (type == "attempt" && JsonNode.Parse(line) is JsonObject o) lock (SessionAttempts) SessionAttempts.Add(o);
+        if (type == "attempt" && JsonNode.Parse(line) is JsonObject o) lock (SessionAttempts) { SessionAttempts.Add(o); attemptVersion++; if (SessionAttempts.Count > MaxSessionAttempts) SessionAttempts.RemoveRange(0, MaxSessionAttempts / 10); }
     }
 
     /// <summary>1 行追記する。ウイルス対策などの一時的なロックは短く待って再試行し、それでも書けなければ記録を諦める(釣りの本線を止めない)。</summary>
@@ -134,7 +150,18 @@ public sealed class EventLog
         DateTimeOffset.TryParse(o.Str("ts"), CultureInfo.InvariantCulture, DateTimeStyles.None, out var t) ? t.ToUnixTimeMilliseconds() / 1000.0 : null;
 
     /// <summary>このセッションの集計。</summary>
-    public Dictionary<string, object?> SummarizeSession() { lock (SessionAttempts) return Summarize(SessionAttempts.ToList()); }
+    public Dictionary<string, object?> SummarizeSession()
+    {
+        lock (SessionAttempts)
+        {
+            // 試行が増えていなければ前回の集計を返す(5 秒ごとの再集計を避ける)
+            if (cachedSummary is null || cachedAt != attemptVersion) { cachedSummary = Summarize(SessionAttempts.ToList()); cachedAt = attemptVersion; }
+            return cachedSummary;
+        }
+    }
+
+    Dictionary<string, object?>? cachedSummary;
+    int cachedAt, attemptVersion;
 
     /// <summary>試行イベントから成功率・魚種別・経験値などを集計する。</summary>
     public static Dictionary<string, object?> Summarize(IEnumerable<JsonObject> events)
