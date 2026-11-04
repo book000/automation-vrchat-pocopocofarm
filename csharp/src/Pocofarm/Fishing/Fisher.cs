@@ -634,6 +634,8 @@ public sealed class Fisher
                 dip.Anchored = b is not null && anchorPos is { } ap && Math.Abs(b.X - ap.X) <= cfg.BobberNearPx * scale * 2 && Math.Abs(b.Y - ap.Y) <= cfg.BobberNearPx * scale * 2;
                 if (fresh || b is null) dip.Update(now, b);
                 // 低 fps だと最初に見えた時点で着水済みで動きを観測できないので、投げから一定時間たった静止も着水とみなす(未確認扱いで当たり待ちに入る)
+                // 静止の基準位置と今のウキ位置が大きくずれているのは、別の候補(手・他人のウキ)で静止を判定してしまったとき。そのまま当たり待ちに入ると、本物の出現が「沈み」になって早引きする
+                if (dip.Armed && b is not null && Math.Abs(b.Y - dip.BaseY) > cfg.BobberNearPx * scale) { Log.Info($"静止の基準 y={dip.BaseY:F0} と現在位置 y={b.Y} がずれているので静止判定をやり直します"); dip = NewDip(); }
                 if (dip.Armed && (castMoved || startupAdopt || now - tState > cfg.CastSettleFallback))
                 {
                     // 竿先にぶら下がったウキ(幅が水面の約 2 倍)は着水していない。投げのクリックが効かなかったので撮り直して投げ直す
