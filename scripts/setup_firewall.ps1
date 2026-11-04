@@ -1,5 +1,5 @@
 ﻿# C# 版 pocofarm.exe のダッシュボード(TCP 10000)をLANから開けるようにする。管理者権限が必要(UACの確認が出ます)。
-# 使い方: powershell -File scripts\setup_firewall.ps1 -Exe csharp\dist\pocofarm.exe
+# 使い方: powershell -File scripts\setup_firewall.ps1 -Exe artifacts\publish\pocofarm.exe
 #   1. exe 宛ての既存のブロック規則(過去の「キャンセル」で作られる)を削除する
 #   2. TCP 10000 の許可規則(プライベートプロファイル/同一サブネット限定。-Subnet で変更可)を作る
 # 注意: 昇格後のプロセスは N: などのマップドライブを見られないため、パス解決は昇格前に行い引数で渡す。
