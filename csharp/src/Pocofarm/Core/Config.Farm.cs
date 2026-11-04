@@ -3,7 +3,7 @@ namespace Pocofarm.Core;
 /// <summary>ファーム定点写真の撮影と畑の解析に関する設定。</summary>
 public sealed partial class Config
 {
-    [Desc("ファーム定点写真の撮影間隔[秒]。0 で無効")] public double FarmShotInterval { get; set; } = 600;
+    [Desc("ファーム定点写真の撮影間隔[秒]。0 で無効。撮影は VRChat の前面化とクリックが要るので、背面で動かしたいときは 0 のままにする")] public double FarmShotInterval { get; set; } = 0;
     [Desc("撮影のために釣りを止める前に、釣れた直後(区切り)を待つ上限[秒]")] public double FarmShotWaitSeconds { get; set; } = 60;
     [Desc("ファーム写真の切り抜き範囲 [左, 上, 右, 下](画面比率。全体は [0,0,1,1])")] public double[] FarmShotCrop { get; set; } = [0.0, 0.0, 1.0, 1.0];
     [Desc("ファームの変化: 水やりの有無が変わったとみなす、マスの濃い土の割合(%)の最小の差。境目付近の揺れを変化と数えないため")] public int FarmWaterMinChange { get; set; } = 40;

@@ -40,7 +40,7 @@ public sealed partial class Config
     [Desc("自動調整: 投げが連続して成功したらこの回数ごとに 1 段縮める")] public int TuneSuccessStreak { get; set; } = 30;
     [Desc("自動調整: 投げが無視されたとき、その値からこの量[秒]だけ余裕を持たせた値まで戻す")] public double TuneMargin { get; set; } = 0.1;
 
-    [Desc("VRChat を前面にし直す間隔[秒]")] public double ForegroundRetry { get; set; } = 3.0;
+    [Desc("OSC の Use(クリック相当)を押している時間[ミリ秒]")] public int OscHoldMs { get; set; } = 50;
     [Desc("この秒数を超える処理の途切れを gap として扱う")] public double GapThreshold { get; set; } = 0.7;
     [Desc("フレームが来ないときにキャプチャを作り直すまでの秒数")] public double CaptureStallSeconds { get; set; } = 3.0;
     [Desc("取得画面サイズがウィンドウとずれたままのときにキャプチャを作り直すまでの秒数")] public double CaptureSizeMismatchSeconds { get; set; } = 2.0;

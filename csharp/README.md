@@ -14,7 +14,7 @@ dist\pocofarm.exe all --root ..                                          # 釣�
 | コマンド | 内容 |
 |---|---|
 | `pocofarm all [--root <dir>]` | `run` を子プロセスで起動し、落ちたら 5 秒後に再起動 |
-| `pocofarm run [--root <dir>] [--host <ip>] [--port <n>] [--dry-run]` | 釣り+ダッシュボード。`--dry-run` はクリックも前面化もしない(並走して挙動を比べる用) |
+| `pocofarm run [--root <dir>] [--host <ip>] [--port <n>] [--dry-run]` | 釣り+ダッシュボード。`--dry-run` はクリックを送らない(並走して挙動を比べる用) |
 | `pocofarm bench-ocr [dir] [-v]` | OCR エンジン(Windows OCR / PP-OCR ONNX)を固定サンプルで比較 |
 | `pocofarm capture-test [out.png]` | VRChat を数秒キャプチャし、サイズ・fps・ウキ検出を表示 |
 | `pocofarm ocr-image <png>` | 画像 1 枚を Windows OCR で読み、トースト分類を表示 |
@@ -58,7 +58,7 @@ curl -X POST http://<host>:10000/api/config -d '{"farm_shot_interval":900,"pecks
 
 ## 実装メモ
 
-- キャプチャは **Windows.Graphics.Capture**。ウィンドウ単位で撮るのでモニター構成が変わっても再列挙が要らず、他のウィンドウが被っても撮れる(ただしクリックのため VRChat が前面であることは必須)。フレームは画面が変わったときだけ届く。
+- キャプチャは **Windows.Graphics.Capture**。ウィンドウ単位で撮るのでモニター構成が変わっても再列挙が要らず、他のウィンドウが被っても撮れる。クリックは OSC(`/input/UseRight`)で送るので VRChat が背面でも動く(最小化だけは不可)。フレームは画面が変わったときだけ届く。
 - RapidOCR 相当は PP-OCRv6 の ONNX を直接動かす実装。横書きのトースト専用(縦書き判定・180 度判定は省略)。
 - 視点移動の検出は縮小画像のブロックマッチング。
 - 投げの受付ロック: ゲームは引き(釣果)から約 1.8 秒は投げを受け付けない(実測)。引きクリックからの間隔(`reel_to_cast_min`、既定 2.0 秒)を上限に、`AutoTuner` が成功の続く限り縮める。竿先にウキが残った場合は `cast_failed` として記録し、すぐ投げ直す。

@@ -51,6 +51,23 @@ public static class Osc
         udp.Send(m, m.Length, "127.0.0.1", port);
     }
 
+    /// <summary>
+    /// /input/UseRight を押し、holdMs 後に離す(デスクトップのクリック相当。ウィンドウのフォーカスに依存しない)。
+    /// 離すのは別スレッドで待つので、呼び出しは待たせない。
+    /// </summary>
+    public static void Use(int holdMs, int port)
+    {
+        var udp = new UdpClient();
+        var down = Message("/input/UseRight", 1);
+        udp.Send(down, down.Length, "127.0.0.1", port);
+        Task.Delay(holdMs).ContinueWith(_ =>
+        {
+            var up = Message("/input/UseRight", 0);
+            udp.Send(up, up.Length, "127.0.0.1", port);
+            udp.Dispose();
+        });
+    }
+
     /// <summary>カメラのモード(0=閉じる)。開いている間だけ効く。</summary>
     public static void SetMode(int mode, int port)
     {

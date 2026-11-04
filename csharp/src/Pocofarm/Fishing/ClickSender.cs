@@ -1,4 +1,5 @@
 using Pocofarm.Core;
+using Pocofarm.Farm;
 using Pocofarm.Platform;
 
 namespace Pocofarm.Fishing;
@@ -10,8 +11,8 @@ public static class ClickKind
 }
 
 /// <summary>
-/// ゲームへのクリック送信。VRChat が前面でカーソルが内側にあるときだけ送り、種別ごとの送信数を数える。
-/// 送れなかったときは一定時間保留する(毎フレーム前面化を試みない)。
+/// ゲームへのクリック送信。OSC の Use で送るので、VRChat が背面でもフォーカスやカーソルを奪わない。
+/// 種別ごとの送信数を数え、送れなかったときは一定時間保留する。
 /// </summary>
 public sealed class ClickSender(Config cfg, Status status, bool dryRun)
 {
@@ -26,8 +27,6 @@ public sealed class ClickSender(Config cfg, Status status, bool dryRun)
     (bool Ok, string Reason) CanClick(nint hwnd)
     {
         if (hwnd == 0 || WinApi.FindWindow(cfg.WindowTitle) == 0) return (false, "VRChat ウィンドウなし");
-        if (dryRun ? !WinApi.IsForeground(hwnd) : !WinApi.EnsureForeground(hwnd)) return (false, "VRChat を前面にできません");
-        if (!WinApi.CursorInside(hwnd)) return (false, "カーソルが VRChat の外です");
         return (true, "");
     }
 
@@ -44,7 +43,7 @@ public sealed class ClickSender(Config cfg, Status status, bool dryRun)
             return false;
         }
         if (dryRun) Log.Info($"[dry-run] クリック({kind})を送信したことにします");
-        else WinApi.Click();
+        else Osc.Use(cfg.OscHoldMs, cfg.OscPort);
         counts[kind] = counts.GetValueOrDefault(kind) + 1;
         return true;
     }

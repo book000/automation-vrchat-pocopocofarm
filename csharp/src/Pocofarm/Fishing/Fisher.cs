@@ -70,7 +70,7 @@ public sealed class Fisher
     int fpsN;
     double fpsT = EventLog.Now(), fps;
     readonly LinkedList<(double T, int Y, int W)> trace = new();   // 見逃し調査用
-    double lastLive, lastCleanup, lastStats, lastFgTry;
+    double lastLive, lastCleanup, lastStats;
     List<Box> boxes = [];
     bool startupAdopt = true;
     bool castVerified;                  // 自分の投げ/引きでウキの状態を確認できたか
@@ -78,7 +78,6 @@ public sealed class Fisher
     readonly double startedAt = EventLog.Now();
     double lastTick = EventLog.Now();
     readonly ViewMotion viewMotion;
-    bool wasFg = true;
 
     public Fisher(Config cfg, Paths paths, bool dryRun = false, bool startPaused = false)
     {
@@ -468,34 +467,6 @@ public sealed class Fisher
         AfterGap(0.0);
     }
 
-    /// <summary>VRChat が前面でない間は他ウィンドウが写り込むため、判定と記録を止めて前面化を試みる。</summary>
-    bool ForegroundOk(double now)
-    {
-        if (hwnd != 0 && WinApi.IsForeground(hwnd))
-        {
-            if (!wasFg)
-            {
-                Log.Info("VRChat が前面に戻りました。ウキの静止判定をやり直します");
-                AfterGap(0.0);
-                wasFg = true;
-            }
-            return true;
-        }
-        if (wasFg)
-        {
-            Log.Warn("VRChat が前面ではありません。判定を一時停止します");
-            wasFg = false;
-            reader.Clear();
-        }
-        status.Set("message", "VRChat が前面ではないため一時停止中");
-        if (!dryRun && now - lastFgTry > cfg.ForegroundRetry)
-        {
-            lastFgTry = now;
-            WinApi.EnsureForeground(hwnd);
-        }
-        return false;
-    }
-
     /// <summary>視点が動いている間はウキの位置変化を沈みと誤認しないよう、静止判定をやり直す。</summary>
     void OnViewChange()
     {
@@ -542,7 +513,6 @@ public sealed class Fisher
         if (gap > cfg.GapThreshold) { prof.Account(now, "gap"); AfterGap(gap); }
         prof.Mark("ensure-capture");
         if (!EnsureCapture()) { prof.Account(now, "gap"); status.Flush(); Thread.Sleep(500); return; }
-        if (!ForegroundOk(now)) { prof.Account(now, "fg_lost"); status.Flush(); Thread.Sleep(100); return; }
         prof.Account(now, "active");
 
         prof.Mark("copy");
