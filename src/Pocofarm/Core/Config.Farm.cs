@@ -7,6 +7,8 @@ public sealed partial class Config
     [Desc("ファーム撮影を、VRChat がすでに前面にあるときだけ行う(背面の間は待つだけで、フォーカスもカーソルも奪わない)")] public bool FarmShotForegroundOnly { get; set; } = true;
     [Desc("撮影のために釣りを止める前に、釣れた直後(区切り)を待つ上限[秒]")] public double FarmShotWaitSeconds { get; set; } = 60;
     [Desc("ファーム写真の切り抜き範囲 [左, 上, 右, 下](画面比率。全体は [0,0,1,1])")] public double[] FarmShotCrop { get; set; } = [0.0, 0.0, 1.0, 1.0];
+    [Desc("ファーム通知: 植えなし・水やり前のマスが何回の撮影で連続して残ったら知らせるか")] public int FarmAlertScans { get; set; } = 2;
+    [Desc("ファーム通知を Windows のトーストでも出す(ダッシュボードのバッジは常に出る)")] public bool FarmAlertToast { get; set; } = true;
     [Desc("ファームの変化: 水やりの有無が変わったとみなす、マスの濃い土の割合(%)の最小の差。境目付近の揺れを変化と数えないため")] public int FarmWaterMinChange { get; set; } = 40;
     [Desc("ファーム撮影: 起動後の最初の撮影で、畑 8 面が収まっていなければカメラ位置を自動で調整する")] public bool FarmCalibrate { get; set; } = true;
     [Desc("画角調整: 畑全体の外側に残す余白(画面比率)")] public double FarmCalMargin { get; set; } = 0.04;

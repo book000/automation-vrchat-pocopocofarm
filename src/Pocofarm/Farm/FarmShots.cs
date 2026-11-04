@@ -243,12 +243,27 @@ public sealed partial class FarmShots(Paths paths, Config cfg, IFishingControl d
             AtomicFile.Write(Path.ChangeExtension(jpgPath, ".json"), System.Text.Json.JsonSerializer.SerializeToUtf8Bytes(
                 new { plots = scan.Plots.Select(p => new { quad = p.Quad, cells = p.Cells, wet = p.Wet }), unplanted, dry, done, hidden }));
             new EventLog(paths.Events).Write("farm_scan", ("plots", scan.Plots.Count), ("unplanted", unplanted), ("dry", dry), ("done", done), ("hidden", hidden),
-                ("unplanted_by_plot", scan.Plots.Select(p => p.Cells.Count(c => c is 'e' or 'b')).ToArray()));
+                ("unplanted_by_plot", scan.Plots.Select(p => p.Cells.Count(c => c is 'e' or 'b')).ToArray()), ("cells", scan.Plots.Select(p => p.Cells).ToArray()));
+            Alert(scan);
             Log.Info($"ファーム解析: 畑 {scan.Plots.Count} 面、植えなし {unplanted}(水やり前 {dry}・水やり済 {done})・隠れて不明 {hidden}" + (scan.Plots.Count == 8 ? "" : "(畑が 8 面見つかりません)"));
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidOperationException)
         {
             Log.Warn("ファーム解析に失敗: " + ex.Message);
+        }
+    }
+
+    FarmWatch? watch;
+
+    /// <summary>畑の通知(植えなし・乾きの連続、全マス完了)。新しく出たものをイベントとトーストに出す。</summary>
+    void Alert(FarmScan scan)
+    {
+        watch ??= new FarmWatch(Math.Max(1, cfg.FarmAlertScans));
+        var snap = new FarmSnapshot(EventLog.Now(), scan.Plots.Select(p => p.Cells).ToArray(), scan.Plots.Select(p => p.Cells.Count(c => c is 'e' or 'b')).ToArray(), scan.Dry, scan.Count('w'), scan.Count('?'));
+        foreach (var a in watch.Observe(snap))
+        {
+            new EventLog(paths.Events).Write("farm_alert", ("kind", a.Kind), ("plot", a.Plot), ("message", a.Message));
+            if (cfg.FarmAlertToast) Notify.Toast("ぽこぽこファーム", a.Message);
         }
     }
 

@@ -234,8 +234,11 @@ public sealed partial class Dashboard(Paths paths, Config cfg) : IFishingControl
             ["restarts"] = events.Where(e => e.Str("type") == "session_start" && T(e) >= now - 24 * 3600).TakeLast(8).Reverse().Select(T).ToList(),
         };
         var recent = attempts.TakeLast(60).Reverse().Select(e => Without(e, "_t", "trace")).ToList();
+        SampleFps(status, alive);
+        var health = HealthOf(attempts, status);
         return new()
         {
+            ["markers"] = MarkersOf(events, now), ["health"] = health, ["farm"] = FarmOf(events),
             ["now"] = now, ["alive"] = alive, ["status"] = status,
             ["total"] = EventLog.Summarize(attempts), ["hour"] = EventLog.Summarize(hour), ["session"] = EventLog.Summarize(session),
             ["recent"] = recent, ["chart"] = chart, ["hourly"] = hourly,

@@ -59,6 +59,7 @@ public sealed class AutoTuner
         double next = Math.Max(Lower, ReelToCast - cfg.ReelToCastStep);
         if (next >= ReelToCast) return;
         Log.Info($"投げの待ち時間を縮めます: {ReelToCast:F2} → {next:F2} 秒");
+        Record("reel_to_cast", ReelToCast, next);
         value = next;
         Save();
     }
@@ -74,6 +75,7 @@ public sealed class AutoTuner
         double next = Math.Min(Upper, failedAt.Value + cfg.TuneMargin);
         if (next <= ReelToCast) { Save(); return; }
         Log.Warn($"投げが不発だったため待ち時間を戻します: {ReelToCast:F2} → {next:F2} 秒(間隔 {dt:F2} 秒で失敗)");
+        Record("reel_to_cast", ReelToCast, next);
         value = next;
         Save();
     }
@@ -90,7 +92,7 @@ public sealed class AutoTuner
     {
         if (waitSamples.Count < cfg.BiteWaitMinSamples) return cfg.NoBiteTimeout;
         double t = Math.Clamp(waitSamples.Max() * cfg.NoBiteFactor, Math.Min(cfg.NoBiteMin, cfg.NoBiteTimeout), cfg.NoBiteTimeout);
-        if (Math.Abs(t - lastBiteTimeout) >= 2) { lastBiteTimeout = t; Log.Info($"当たり待ちの打ち切りを {t:F0} 秒に調整(直近{waitSamples.Count}件の最大 {waitSamples.Max():F1} 秒)"); }
+        if (Math.Abs(t - lastBiteTimeout) >= 2) { var was = lastBiteTimeout; lastBiteTimeout = t; if (was > 0) Record("bite_timeout", was, t); Log.Info($"当たり待ちの打ち切りを {t:F0} 秒に調整(直近{waitSamples.Count}件の最大 {waitSamples.Max():F1} 秒)"); }
         return t;
     }
 
@@ -102,6 +104,7 @@ public sealed class AutoTuner
             earlyStreak++;
             if (earlyStreak >= cfg.EarlyStreakToAdapt && PecksToReel < cfg.MaxPecksToReel)
             {
+                Record("pecks_to_reel", PecksToReel, PecksToReel + 1);
                 PecksToReel++;
                 Log.Warn($"早すぎが続いたため、{PecksToReel}回目の沈みで引くよう調整");
                 earlyStreak = 0;
@@ -113,12 +116,20 @@ public sealed class AutoTuner
             // 一時的な誤検知(魚の接近など)で増やした回数は、成功が続けば基準へ戻す(引く回数が多いほど 1 回あたりが遅くなる)
             if (PecksToReel > cfg.PecksToReel && ++caughtStreak >= cfg.CaughtStreakToRevert)
             {
+                Record("pecks_to_reel", PecksToReel, PecksToReel - 1);
                 PecksToReel--;
                 caughtStreak = 0;
                 Log.Info($"成功が続いたため、{PecksToReel}回目の沈みで引くよう戻しました");
             }
         }
         if (outcome != "caught") caughtStreak = 0;
+    }
+
+    /// <summary>自動調整による変更を events.jsonl に残す(ダッシュボードのグラフに縦線で重ねる)。</summary>
+    void Record(string what, double from, double to)
+    {
+        try { EventLog.Note(Path.Combine(Path.GetDirectoryName(Path.GetFullPath(file))!, "events.jsonl"), "tune", ("what", what), ("from", Math.Round(from, 2)), ("to", Math.Round(to, 2))); }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { }
     }
 
     void Save()

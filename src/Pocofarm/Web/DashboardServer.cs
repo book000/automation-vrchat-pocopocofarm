@@ -59,6 +59,12 @@ public static class DashboardServer
         app.MapGet("/api/events", (string? outcome, int? limit) => JsonResult(dash.ListAttempts(outcome ?? "", limit ?? 200)));
         app.MapGet("/api/archives", () => JsonResult(dash.ListArchives()));
         app.MapGet("/api/archive", (string? name) => dash.ArchiveDetail(name ?? "") is { } d ? JsonResult(d) : Results.NotFound("not found"));
+        // ---- 運用の見える化(まとめ・進捗・失敗の整理・健康) ----
+        app.MapGet("/api/summary", (string? day, int? days) => dash.Summary(day, days ?? 1) is { } s ? JsonResult(s) : Results.BadRequest("day は yyyy-MM-dd で指定してください"));
+        app.MapGet("/api/progress", () => JsonResult(dash.ProgressState()));
+        app.MapGet("/api/triage", (double? hours) => JsonResult(dash.TriageState(hours ?? 24)));
+        app.MapGet("/api/health", () => JsonResult((Health.Latest ?? Health.Evaluate([])).ToJson()));
+        // ---- ここまで ----
         app.MapGet("/farm_live.jpg", () => File.Exists(paths.FarmLive) ? Results.Bytes(ReadShared(paths.FarmLive), "image/jpeg") : Results.NotFound());
         app.MapGet("/live.jpg", () => File.Exists(paths.Live) ? Results.Bytes(ReadShared(paths.Live), "image/jpeg") : Results.NotFound());
         var farm = new FarmShots(paths, cfg, dash);
@@ -122,6 +128,7 @@ public static class DashboardServer
             }
             if (err is not null) return Results.Text(JsonSerializer.Serialize(new { ok = false, error = err }, Json), "application/json; charset=utf-8", statusCode: 400);
             Log.Info($"ダッシュボードから設定を変更: {string.Join(", ", patch.Select(kv => kv.Key))} ({ctx.Connection.RemoteIpAddress})");
+            EventLog.Note(paths.Events, "config_change", ("keys", string.Join(", ", patch.Select(kv => kv.Key))), ("source", "ダッシュボード"));
             return JsonResult(new { ok = true, restart_required = restart });
         });
         app.MapPost("/api/neko_ack", (HttpContext ctx) =>
