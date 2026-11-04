@@ -25,6 +25,14 @@ Logs: `data/fishing.log` (readable), `data/events.jsonl` (structured), `data/cra
 The game shows a notice asking you to throw towards the pond water when the view is not on the pond. The tool records `cast_failed`, notifies you after `cast_fail_alert_count` failures in a row, and pauses casting for `cast_fail_pause` seconds.
 
 - Face the pond and hold the rod before starting.
+- The tool tries to fix a drifted view itself (`aim_recover`). After `cast_fail_alert_count` failures in a row it compares the screen with the picture saved at the last catch (`data/aim_reference.png`) and turns the view back with the mouse, then resumes casting. The notification is sent only if this does not work. Each attempt is logged with `[aim]` lines and an `aim_recover` event whose `result` is one of:
+  - `Aligned`: the view was restored.
+  - `NoReference`: no catch has been recorded yet, so there is nothing to align to. Catch once with the view on the pond.
+  - `NoMatch`: the reference scene is not on the screen. The view turned too far or you moved to another place; the correction only fixes rotation, not a changed position. Move back and face the pond yourself.
+  - `GaveUp`: still not aligned after `aim_recover_max_steps` corrections.
+  - `InputFailed`: the mouse had no effect or moved the wrong way. VRChat must be able to take the foreground and not have a menu open, and the Windows cursor must be free to move.
+  - `Aborted`: the bot was paused during the correction.
+- During a correction (a few seconds) VRChat takes the foreground and the mouse moves; the previous window and cursor position are restored afterwards. Set `aim_recover` to `false` if this gets in the way of what you do on the PC.
 - Another cause is the bobber staying at the rod tip: the cast click arrived while the game still ignored casts. The auto-tuner raises the reel-to-cast wait on its own after such failures. On slow machines raise `reel_to_cast_min` or `reel_to_cast_max`.
 
 ## The bobber is not detected

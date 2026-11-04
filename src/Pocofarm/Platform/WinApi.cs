@@ -122,6 +122,28 @@ public static partial class WinApi
         keybd_event(vk, scan, 0xA, 0);
     }
 
+    /// <summary>いま前面にあるウィンドウ(補正後に戻す用)。</summary>
+    public static nint ForegroundWindow() => GetForegroundWindow();
+
+    /// <summary>
+    /// マウスを相対移動する(MOUSEEVENTF_MOVE)。VRChat のデスクトップ操作の視点移動に使う。前面のウィンドウに届くので、呼び出し側で VRChat を前面にしておくこと。
+    /// 大きな量は細かく分けて送り、取りこぼしを避ける。
+    /// </summary>
+    public static void MouseMove(int dx, int dy)
+    {
+        int steps = Math.Max(1, (Math.Max(Math.Abs(dx), Math.Abs(dy)) + 99) / 100);
+        int sx = 0, sy = 0;
+        for (int i = 1; i <= steps; i++)
+        {
+            int tx = dx * i / steps, ty = dy * i / steps;
+            var input = new Input { Type = 0, Mi = new MouseInput { Dx = tx - sx, Dy = ty - sy, Flags = 0x0001 } };
+            if (SendInput(1, ref input, Marshal.SizeOf<Input>()) != 1)
+                throw new InvalidOperationException($"SendInput failed: {Marshal.GetLastWin32Error()}");
+            sx = tx; sy = ty;
+            Thread.Sleep(6);
+        }
+    }
+
     /// <summary>カーソルの現在位置(デスクトップ座標)。</summary>
     public static (int X, int Y) CursorPos() { GetCursorPos(out var p); return (p.X, p.Y); }
 
