@@ -18,6 +18,7 @@ public static class Program
             "run" => RunCommand.Run(args),
             "all" => Supervisor.Run(args),
             "cleanup" => Maintenance.Cleanup(args),
+            "diag" => Maintenance.Diag(args),
             "init-config" => Maintenance.InitConfig(args),
             "setup" => Maintenance.Setup(args),
             _ => Help(),
@@ -26,7 +27,7 @@ public static class Program
 
     static int Help()
     {
-        Console.WriteLine("pocofarm setup (LAN公開のファイアウォール設定) | doctor [--image <png>] (初回点検) | all|run [--root <dir>] [--host <ip>] [--port <n>] [--dry-run] [--paused] | capture-test [out.png] | ocr-image <png> | bench-ocr [dir] [-v]");
+        Console.WriteLine("pocofarm setup (LAN公開のファイアウォール設定) | doctor [--image <png>] (初回点検) | all|run [--root <dir>] [--host <ip>] [--port <n>] [--dry-run] [--paused] | diag [--root <dir>] [--out <zip>] (診断 zip) | capture-test [out.png] | ocr-image <png> | bench-ocr [dir] [-v]");
         return 0;
     }
 }

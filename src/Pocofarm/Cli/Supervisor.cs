@@ -33,8 +33,7 @@ public static class Supervisor
             {
                 if (e.Data is null) return;
                 Console.Error.WriteLine(e.Data);
-                try { File.AppendAllText(Path.Combine(paths.Data, "crash.log"), $"{DateTime.Now:yyyy-MM-dd HH:mm:ss} {e.Data}{Environment.NewLine}"); }
-                catch (IOException) { }
+                Log.Append(paths.CrashLog, $"{DateTime.Now:yyyy-MM-dd HH:mm:ss} {e.Data}{Environment.NewLine}");
             };
             p.BeginErrorReadLine();
             double started = Environment.TickCount64 / 1000.0;
@@ -53,7 +52,7 @@ public static class Supervisor
                 }
                 // 設定は毎回読み直す(config.json の update_source を編集しても再起動なしで効く。手編集の途中で壊れていても落ちない)
                 var live = cfg;
-                try { live = Config.Load(paths.ConfigFile); }
+                try { live = Config.Load(paths.ConfigFile, warn: false); }
                 catch (Exception e) when (e is JsonException or IOException) { Log.Warn($"config.json を読めないため、直前の設定で続けます: {e.Message}"); }
                 double now = Environment.TickCount64 / 1000.0;
                 if (live.ExeCleanupInterval > 0 && now - lastExeCleanup >= live.ExeCleanupInterval)

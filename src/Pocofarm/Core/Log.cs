@@ -2,7 +2,7 @@ using System.Globalization;
 
 namespace Pocofarm.Core;
 
-/// <summary>テキストログ(5MB×5 世代のローテーション付き)。data/fishing.log に追記する。</summary>
+/// <summary>テキストログ(5MB×5 世代のローテーション付き)。data/fishing.log に追記する。crash.log も Append で同じ規則で回す。</summary>
 public static class Log
 {
     static readonly object Gate = new();
@@ -32,21 +32,30 @@ public static class Log
         {
             if (console) Console.WriteLine(line);
             if (path is null) return;
+            Append(path, line + "\n");
+        }
+    }
+
+    /// <summary>ファイルへ追記する。5MB を超えていたら 5 世代で回す。失敗しても呼び出し側を止めない。crash.log など fishing.log 以外にも使う。</summary>
+    public static void Append(string file, string text)
+    {
+        lock (Gate)
+        {
             try
             {
-                if (File.Exists(path) && new FileInfo(path).Length > 5_000_000) Rotate();
+                if (File.Exists(file) && new FileInfo(file).Length > 5_000_000) Rotate(file);
                 // ダッシュボードなど他プロセスが同じファイルを開いていても追記できるよう共有を許す
-                using var fs = new FileStream(path, FileMode.Append, FileAccess.Write, FileShare.ReadWrite | FileShare.Delete);
-                fs.Write(System.Text.Encoding.UTF8.GetBytes(line + "\n"));
+                using var fs = new FileStream(file, FileMode.Append, FileAccess.Write, FileShare.ReadWrite | FileShare.Delete);
+                fs.Write(System.Text.Encoding.UTF8.GetBytes(text));
             }
             catch (IOException) { /* ログ書き込み失敗で釣りを止めない */ }
         }
     }
 
-    static void Rotate()
+    static void Rotate(string file)
     {
         for (int i = 4; i >= 1; i--)
-            if (File.Exists($"{path}.{i}")) File.Move($"{path}.{i}", $"{path}.{i + 1}", true);
-        File.Move(path!, $"{path}.1", true);
+            if (File.Exists($"{file}.{i}")) File.Move($"{file}.{i}", $"{file}.{i + 1}", true);
+        File.Move(file, $"{file}.1", true);
     }
 }

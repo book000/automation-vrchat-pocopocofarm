@@ -21,5 +21,8 @@ public sealed class Paths(string root)
     public string CameraPose => Path.Combine(Data, "camera_pose.json");
     public string Farm => Path.Combine(Data, "farm");
     public string Evidence => Path.Combine(Data, "evidence");
+    public string ConfigHistory => Path.Combine(Data, "config.history.jsonl");
+    public string CrashLog => Path.Combine(Data, "crash.log");
+    public string SelfCheck => Path.Combine(Data, "selfcheck.json");
     public string ConfigFile => Path.Combine(Root, "config.json");
 }

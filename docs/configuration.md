@@ -12,7 +12,23 @@ Settings live in `config.json` in the root directory (`--root`). The file is opt
 
 Most settings can also be viewed and changed from the dashboard's settings card or through [`/api/config`](operations.md#dashboard-http-api). Changes are validated as a whole and saved to `config.json`. A setting marked **Restart** takes effect only after the fishing worker restarts; all others apply immediately. `update_source` can only be edited in the file.
 
-Validation rules: numbers must be finite and non-negative, arrays must have the same length as the default, and unknown keys are rejected.
+Validation rules: numbers must be finite and within the range of the setting (counts, sizes, ports and anything used as a divisor are at least 1), arrays must have the same length as the default, ROI rectangles are `[left, top, right, bottom]` ratios in 0 to 1 with left < right and top < bottom, `dashboard_host` must be an IP address, and unknown keys are rejected. Relations are checked too: `reel_to_cast_floor <= reel_to_cast_min <= reel_to_cast_max`, `no_bite_min <= no_bite_timeout`, `pecks_to_reel <= max_pecks_to_reel`, `bite_wait_min_samples <= bite_wait_samples`, and `bobber_min_height <= bobber_max_height`. A change that breaks a rule is refused with a message and nothing is applied.
+
+When the worker loads `config.json`, a value of the wrong type or outside its range, or a key in a broken relation, is logged as a warning and replaced by the default (for a relation, all keys involved). A file that is not valid JSON never stops the worker: it falls back to the last file that loaded cleanly (`data/config.lastgood.json`), or to the defaults if there is none, and logs a warning.
+
+### Presets, section reset and undo
+
+The dashboard's "settings tools" card (and the `/api/config/*` endpoints in [operations](operations.md#dashboard-http-api)) offer:
+
+| Preset | Changes | Use when |
+|---|---|---|
+| `safe` | `tune_reel_to_cast=false`, `reel_to_cast_min=3.0`, `reel_to_cast_max=8.0`, `recast_delay=2.5`, `osc_hold_ms=80`, `farm_shot_interval=0`, `aim_recover=false` | Casts are ignored or the machine is unstable; you want slow, predictable behavior with no mouse or farm camera actions. |
+| `fast` | `reel_to_cast_floor=1.0`, `reel_to_cast_min=1.6`, `recast_delay=1.2`, `ocr_interval=0.08`, `no_bite_min=15`, `no_bite_timeout=60` | The frame rate is stable and you want more attempts per hour. Revert if casts start to be ignored. |
+| `low-gpu` | `capture_fps=30`, `ocr_interval=0.25`, `live_interval=2.0`, `rapid_ocr=false`, `work_height=720`, `hud_interval=20`, `farm_shot_interval=1800` | The GPU or CPU is shared with VRChat and the PC struggles. Detection is coarser; `capture_fps` needs a restart. |
+
+- **Reset a section** returns every setting of one section (`fishing`, `vision`, `toast`, `farm`, `aim`, `system`; named after the `Config.*.cs` file) to its default. `update_source` is never touched.
+- **Differs from default.** The card lists every setting whose value is not the default, with the default next to it.
+- **Undo.** Every change made through the dashboard (settings save, preset, section reset) records the previous values of the keys that changed in `data/config.history.jsonl` (the newest 20 entries). Undo restores the newest entry and removes it. Hand edits to `config.json` are not recorded.
 
 Conventions:
 
@@ -188,6 +204,7 @@ The environment the tool runs in.
 | `restart_delay` | number | `5` | yes | Seconds the supervisor waits before restarting a fishing process that exited. |
 | `update_source` | string | (empty) |  | Path (UNC allowed) of a newer executable for auto-update. If it is newer than the running executable, the resident supervisor swaps to it. Edit `config.json` directly; this key cannot be changed through the dashboard. When empty, only a file named `pocofarm.new.exe` triggers a swap. |
 | `update_check_seconds` | number | `60` |  | Interval (seconds) at which `update_source` is checked. |
+| `archive_keep_days` | integer | 0 |  | Delete `data/archive/events_*.jsonl` older than this many days, at worker start and in `pocofarm cleanup`. 0 keeps them forever. |
 | `exe_cleanup_interval` | number | `3600` |  | Interval (seconds) at which leftover executables from swaps (`*.old` and similar) are removed. 0 disables it. |
 
 ## Farm photos

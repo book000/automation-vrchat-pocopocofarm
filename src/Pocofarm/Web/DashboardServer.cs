@@ -117,8 +117,7 @@ public static class DashboardServer
             string? err;
             lock (configGate)
             {
-                err = cfg.Apply(patch, restart);
-                if (err is null) AtomicFile.Write(paths.ConfigFile, JsonSerializer.SerializeToUtf8Bytes(cfg, Config.Json));
+                err = ConfigPresets.ApplyAndSave(paths, cfg, patch, restart);
             }
             if (err is not null) return Results.Text(JsonSerializer.Serialize(new { ok = false, error = err }, Json), "application/json; charset=utf-8", statusCode: 400);
             Log.Info($"ダッシュボードから設定を変更: {string.Join(", ", patch.Select(kv => kv.Key))} ({ctx.Connection.RemoteIpAddress})");
@@ -138,6 +137,8 @@ public static class DashboardServer
             return JsonResult(new { reset = true });
         });
 
+        ExtraEndpoints.Map(app, paths, cfg);   // 自己点検・診断 zip・設定ツール
+
         await app.StartAsync();
         Log.Info($"ダッシュボード起動: http://{host}:{port}/");
         return app;
@@ -149,7 +150,7 @@ public static class DashboardServer
         return IPAddress.TryParse(host, out _) || host.Equals("localhost", StringComparison.OrdinalIgnoreCase) || host.Equals(Environment.MachineName, StringComparison.OrdinalIgnoreCase);
     }
 
-    static bool Private(HttpContext ctx)
+    internal static bool Private(HttpContext ctx)
     {
         var ip = ctx.Connection.RemoteIpAddress;
         if (ip is null) return false;

@@ -18,13 +18,17 @@ public static class RunCommand
         // VRChat と CPU を取り合う環境でも、沈みの検出が間に合うよう優先度を少し上げる
         try { System.Diagnostics.Process.GetCurrentProcess().PriorityClass = System.Diagnostics.ProcessPriorityClass.AboveNormal; }
         catch (Exception ex) when (ex is InvalidOperationException or System.ComponentModel.Win32Exception) { }
-        var cfg = Config.Load(paths.ConfigFile);
+        var cfg = Config.LoadSafe(paths.ConfigFile);
         var host = CliArgs.Get(args, "--host") ?? cfg.DashboardHost;
         var port = int.Parse(CliArgs.Get(args, "--port") ?? cfg.DashboardPort.ToString());
         using var cts = new CancellationTokenSource();
         Console.CancelKeyPress += (_, e) => { e.Cancel = true; cts.Cancel(); };
         if (host != "127.0.0.1" && !Firewall.HasRule(Environment.ProcessPath!, port))
             Log.Warn($"LAN からダッシュボードを開く許可規則がありません。 `{Path.GetFileName(Environment.ProcessPath)} setup` を実行してください(UAC が出ます)");
+        // 古い退避記録の掃除と起動時の自己点検。どちらも失敗しても釣りは始める(点検はクリックしない)
+        try { Housekeeping.PruneArchive(paths, cfg); }
+        catch (Exception ex) { Log.Warn($"アーカイブの掃除に失敗: {ex.Message}"); }
+        SelfCheck.RunAtStart(cfg, paths);
         var web = Web.DashboardServer.StartAsync(paths, cfg, host, port).GetAwaiter().GetResult();
         try { new Fishing.Fisher(cfg, paths, args.Contains("--dry-run"), args.Contains("--paused") || WasPaused(paths)).Run(cts.Token); }
         finally { web.StopAsync().GetAwaiter().GetResult(); }

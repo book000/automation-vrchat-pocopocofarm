@@ -19,5 +19,6 @@ public sealed partial class Config
     [Desc("落ちた釣りプロセスを再起動するまでの待ち[秒]", true)] public double RestartDelay { get; set; } = 5;
     [Desc("自動更新の取得元の exe パス(UNC 可)。これが現在の exe より新しければ、常駐が自動で入れ替わる。config.json を直接編集して設定する(ダッシュボードからは変更できない)。空なら pocofarm.new.exe を置いたときだけ入れ替える")] public string UpdateSource { get; set; } = "";
     [Desc("自動更新の取得元を確認する間隔[秒]")] public double UpdateCheckSeconds { get; set; } = 60;
+    [Desc("data/archive の events_*.jsonl(データリセットで退避した記録)を、この日数より古ければ cleanup と起動時に削除する。0 で消さない")] public int ArchiveKeepDays { get; set; } = 0;
     [Desc("入れ替え後に残る古い exe(*.old など)を掃除する間隔[秒]。0 で無効")] public double ExeCleanupInterval { get; set; } = 3600;
 }
