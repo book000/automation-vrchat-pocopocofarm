@@ -8,6 +8,22 @@ namespace Pocofarm.Fishing;
 
 public sealed partial class Fisher
 {
+    /// <summary>再起動のたびに着水位置を忘れると、最初の数回で別の静止物を自分のウキと取り違えるので、釣れた位置の記憶をファイルで引き継ぐ。古すぎる記憶(視点が変わった可能性)は使わない。</summary>
+    void LoadLandings()
+    {
+        try
+        {
+            if (!File.Exists(paths.Landings) || DateTime.UtcNow - File.GetLastWriteTimeUtc(paths.Landings) > TimeSpan.FromHours(6)) return;
+            if (System.Text.Json.JsonSerializer.Deserialize<double[][]>(File.ReadAllText(paths.Landings)) is not { } rows) return;
+            foreach (var r in rows.Where(r => r.Length == 2 && r[0] is > 0 and < 1 && r[1] is > 0 and < 1).TakeLast(15)) landings.Add((r[0], r[1]));
+            if (landings.Count > 0) Log.Info($"前回の着水位置を {landings.Count} 件引き継ぎました");
+        }
+        catch (Exception e) when (e is IOException or System.Text.Json.JsonException or UnauthorizedAccessException) { Log.Warn($"着水位置の記憶を読めませんでした: {e.Message}"); }
+    }
+
+    void SaveLandings() =>
+        AtomicFile.Write(paths.Landings, System.Text.Encoding.UTF8.GetBytes(System.Text.Json.JsonSerializer.Serialize(landings.Select(l => new[] { Math.Round(l.X, 4), Math.Round(l.Y, 4) }))));
+
     /// <summary>直近の釣果 5 件以上の位置の中央値。足りなければ null。</summary>
     (int X, int Y)? LearnedLanding(Frame f)
     {

@@ -97,6 +97,7 @@ public sealed partial class Fisher
         auditor = new Auditor(cfg, events, status, clicks);
         nekos = new NekoCollector(cfg, events, SaveEvidence);
         tuner = new AutoTuner(cfg, paths.Tuning);
+        LoadLandings();
         prof = new LoopProfiler(cfg, status);
         reader = new ToastReader(cfg);
         hud = new HudMonitor(cfg, paths, events, status);

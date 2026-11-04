@@ -89,7 +89,7 @@ public sealed partial class Fisher
             case 1:
                 cap?.Dispose(); cap = null;
                 dip = NewDip();
-                decoyTracker.Clear(); landings.Clear();
+                decoyTracker.Clear(); landings.Clear(); SaveLandings();
                 tuner.ResetAdaptive();
                 lastPos = null; anchorPos = null; castOrigin = null; startupAdopt = true;
                 break;

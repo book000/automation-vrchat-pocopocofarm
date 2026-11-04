@@ -17,7 +17,7 @@ public sealed partial class Fisher
     void ForgetStaleView(string outcome)
     {
         if (!decoyTracker.NoteOutcome(outcome)) return;
-        landings.Clear();
+        landings.Clear(); SaveLandings();
         Log.Warn("釣れない結果が続いたため、覚えた着水位置と他人のウキの位置を捨てて学び直します");
     }
 
@@ -101,7 +101,7 @@ public sealed partial class Fisher
         if (a.Probe && outcome is "early" or "escaped") RecordAttempt("no_bite_reset", best, f, a, outcome == "early" ? "当たりなしで引き直した" : "確認クリックで逃げられた表示(停止中に当たりが過ぎた)");
         else RecordAttempt(outcome, best, f, a, a.PartialNote, a.Info.Count > 0 ? new() { ["info"] = a.Info.ToList() } : null);
         castVerified = true; unverifiedWait = cfg.UnverifiedWait;
-        if (outcome == "caught" && !a.Probe && a.PosBefore is { } lp) { landings.Add((lp.X / (double)f.Width, lp.Y / (double)f.Height)); if (landings.Count > 15) landings.RemoveAt(0); }
+        if (outcome == "caught" && !a.Probe && a.PosBefore is { } lp) { landings.Add((lp.X / (double)f.Width, lp.Y / (double)f.Height)); if (landings.Count > 15) landings.RemoveAt(0); SaveLandings(); }
         if (outcome == "caught" && !a.Probe && castFailures == 0) aim.NoteCatch(f, now);      // 視点が合っていた証拠の画面を、補正の基準にする
         tuner.OnOutcome(outcome);
         if (outcome == "caught") NoteProgress();
