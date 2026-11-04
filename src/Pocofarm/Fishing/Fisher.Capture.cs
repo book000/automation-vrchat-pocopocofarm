@@ -91,6 +91,7 @@ public sealed partial class Fisher
         // 停止中に手動で釣り竿を操作されたかもしれない。ウキが水中か空中か分からないので、短い待ちで確認クリックに回す
         castVerified = false; unverifiedWait = cfg.ResumeWait;
         ClearAttention("resume");
+        resumeCheckPending = true;
         AfterGap(0.0);
     }
 
@@ -183,6 +184,8 @@ public sealed partial class Fisher
         prof.Mark("drain");
         DrainSightings(f);
         UpdateBoxes(f, bobber);
+        prof.Mark("manual");
+        HandleManual(now, f);
         prof.Mark("step");
         Step(now, f, bobber, fresh);
         prof.Mark("housekeeping");

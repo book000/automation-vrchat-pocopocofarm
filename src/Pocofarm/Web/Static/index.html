@@ -557,5 +557,26 @@ $('fmcard').querySelector('h2').onclick=()=>{$('fmcard').classList.toggle('open'
 tick();evidence();live();
 setInterval(tick,1500);setInterval(live,1000);setInterval(evidence,8000);arList();setInterval(arList,60000);
 </script>
+<!-- 手動操作ブロック(再投げ・今すぐ引く・視点・ドライラン・予約停止)。一時停止中・ドライラン中は釣り側が拒否する -->
+<details id="manualctl" style="max-width:1100px;margin:12px auto;padding:0 16px"><summary>手動操作</summary>
+  <div style="display:flex;flex-wrap:wrap;gap:6px;margin:8px 0">
+    <button data-c="recast">再投げ</button><button data-c="reel_now">今すぐ引く</button>
+    <button data-c="nudge" data-a="left">視点 ←</button><button data-c="nudge" data-a="right">視点 →</button>
+    <button data-c="nudge" data-a="up">視点 ↑</button><button data-c="nudge" data-a="down">視点 ↓</button>
+    <button data-c="dry_run" data-a="on">ドライラン開始</button><button data-c="dry_run" data-a="off">ドライラン終了</button>
+    <button data-c="pause_after_result">結果の後で一時停止</button>
+    <input id="mcuntil" type="time" aria-label="停止して再開する時刻"><button data-c="pause_until">この時刻まで停止</button>
+    <span id="mcmsg" class="mute"></span>
+  </div>
+</details>
+<script>
+document.getElementById('manualctl').addEventListener('click',async e=>{
+  const b=e.target.closest('button[data-c]');if(!b)return;
+  let a=b.dataset.a||'';if(b.dataset.c==='pause_until'){a=document.getElementById('mcuntil').value;if(!a)return}
+  const q=new URLSearchParams({cmd:b.dataset.c});if(a)q.set('arg',a);
+  const m=document.getElementById('mcmsg');
+  try{const r=await fetch('/api/control?'+q,{method:'POST'});m.textContent=r.ok?'送信しました':'失敗 '+r.status}catch(x){m.textContent='失敗'}
+});
+</script>
 </body>
 </html>

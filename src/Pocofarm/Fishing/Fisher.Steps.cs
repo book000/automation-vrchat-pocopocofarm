@@ -70,6 +70,7 @@ public sealed partial class Fisher
         {
             case FishState.Cooldown:
             {
+                control.SafePoint();      // 結果の確定後などで、予約された一時停止があればここで止める
                 double wait = recorder.SessionAttempts > 0 ? cfg.RecastDelay : 0.5;
                 // ゲームは直前の引き(釣果)から約 1.8 秒は投げを受け付けない。結果の確定が早いと RecastDelay だけでは足りないので、引きクリックからも数える
                 if (fresh && ++learnTick % 8 == 0) LearnDecoys(f, b);

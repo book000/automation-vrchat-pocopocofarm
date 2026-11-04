@@ -17,7 +17,7 @@ public sealed partial class Fisher
 {
     readonly Config cfg;
     readonly Paths paths;
-    readonly bool dryRun;
+    bool dryRun => control.DryRun;      // ダッシュボードから実行中に切り替わる
     readonly EventLog events;
     readonly EvidenceStore evidence;
     readonly Status status;
@@ -87,7 +87,7 @@ public sealed partial class Fisher
 
     public Fisher(Config cfg, Paths paths, bool dryRun = false, bool startPaused = false)
     {
-        this.cfg = cfg; this.paths = paths; this.dryRun = dryRun;
+        this.cfg = cfg; this.paths = paths;
         rois = Layout.Resolve(cfg, Layout.RefW, BobberDetector.RefHeight);   // 実フレームが分かるまでは基準の範囲
         events = new EventLog(paths.Events);
         evidence = new EvidenceStore(paths.Evidence, paths.Live, cfg.EvidenceTtlHours, cfg.EvidenceMaxMb);
@@ -104,6 +104,7 @@ public sealed partial class Fisher
         aim = new AimRecovery(cfg, paths, events);
         control = new ControlChannel(cfg, paths, events, status, dryRun, startPaused);
         control.Resumed += OnResumed;
+        control.DryRunChanged += v => clicks.DryRun = v;
         recorder = new AttemptRecorder(cfg, events, status, SaveEvidence, auditor, control);
         control.DataReset += () => lastStats = 0.0;
         unverifiedWait = cfg.UnverifiedWait;
@@ -131,5 +132,5 @@ public sealed partial class Fisher
     List<(int, int, int, int)> ExcludeRects(int w, int h) =>
         rois.Exclude.Select(r => ((int)(r[0] * w), (int)(r[1] * h), (int)(r[2] * w), (int)(r[3] * h))).ToList();
 
-    bool Click(string kind) => clicks.Click(hwnd, kind);
+    bool Click(string kind) => ResumeCheckPassed() && clicks.Click(hwnd, kind);
 }
