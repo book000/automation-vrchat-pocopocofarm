@@ -8,6 +8,10 @@ Start with the built-in check. With VRChat running (and the bobber in the water 
 
 It reports the OS version, the window and capture rate, the resolution, whether the level and experience regions can be read, the bobber detection, and the firewall rule. Each line is `OK`, `NG` (a problem), or `--` (information). It never clicks. `--image <png>` runs the same checks on a saved screenshot.
 
+The worker also runs these checks once at start; see the self-check card on the dashboard or `/api/selfcheck`. A failed check does not pause the worker. To send a bug report, attach the diagnostics bundle: `.\pocofarm.exe diag` (or the dashboard's diagnostics button, `/api/diag.zip`). See [operations](operations.md#diagnostics-bundle) for what it contains.
+
+A `config.json` that is malformed or has out-of-range values does not stop the worker: bad values are replaced by defaults with a warning in `data/fishing.log`, and a broken file falls back to `data/config.lastgood.json`. If a recent settings change made things worse, use "undo" on the dashboard's settings tools card, or apply the `safe` preset.
+
 Logs: `data/fishing.log` (readable), `data/events.jsonl` (structured), `data/crash.log` (worker crashes). The dashboard shows the log tail and the attention events.
 
 ## Nothing happens
