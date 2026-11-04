@@ -45,6 +45,8 @@ public sealed class AttemptRecorder(Config cfg, EventLog events, Status status, 
             ["pos"] = a?.PosBefore is { } p ? new[] { p.X, p.Y } : null,
             ["bobber_w"] = a is { BaseW: > 0 } ? (int)Math.Round(a.BaseW) : null,
         };
+        // 早すぎ・見逃しは再起動直後に多いかを後から再現して調べるため、沈み検出の直前の軌跡(時刻・y・幅)を残す。証拠画像は間引かれるので記録側に持つ
+        if (a is { Trace.Count: > 0 } && outcome is "early" or "missed_bite") fields["trace"] = a.Trace.TakeLast(12).ToList();
         if (extra is not null) foreach (var kv in extra) fields[kv.Key] = kv.Value;
         bool keepEvidence = evidenceThrottle.Keep(outcome);
         if (!keepEvidence) fields["evidence_skipped"] = true;
