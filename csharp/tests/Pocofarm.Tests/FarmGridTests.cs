@@ -31,6 +31,14 @@ public class FarmGridTests
     }
 
     [Fact]
+    public void SignboardGreenButtonOverlappingPlot_IsNotPlanted()
+    {
+        var s = Scan("sign_overlaps_plot.jpg");
+        Assert.Equal(8, s.Plots.Count);
+        Assert.Equal(0, s.Count('p'));
+    }
+
+    [Fact]
     public void HalfPlanted_UpperEmptyLowerWatered()
     {
         var s = Scan("half_planted.jpg");

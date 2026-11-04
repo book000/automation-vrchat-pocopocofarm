@@ -450,6 +450,9 @@ public sealed class Fisher
                 return g;
             }
         }
+        // 追跡できていないときは、まず学習済みの着水位置の周辺だけを探す(画面全体の他人のウキ・アバターに惑わされない)
+        if (b is null && state is SWaitBite or SCastWait && LearnedLanding() is { } home)
+            b = BobberDetector.Detect(f, region, home, radius: (int)(cfg.BobberNearPx * scale * 4), exclude: ex, scale: scale, p: bp, maxWidth: narrow);
         b ??= BobberDetector.Detect(f, region, null, exclude: ex, scale: scale, p: bp, maxWidth: narrow);
         return b ?? BobberDetector.Detect(f, region, null, exclude: ex, scale: scale, p: bp);
     }

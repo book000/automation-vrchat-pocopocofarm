@@ -227,12 +227,13 @@ public static class FarmGrid
     {
         int x0 = Math.Max(0, (int)(cx - hx)), x1 = Math.Min(f.Width - 1, (int)(cx + hx));
         int y0 = Math.Max(0, (int)(cy - hy)), y1 = Math.Min(f.Height - 1, (int)(cy + hy));
-        int n = 0, light = 0, dark = 0, green = 0, other = 0;
+        int n = 0, light = 0, dark = 0, green = 0, other = 0, cream = 0;
         for (int y = y0; y <= y1; y++)
             for (int x = x0, i = (y * f.Width + x0) * 4; x <= x1; x++, i += 4)
             {
                 int b = f.Data[i], g = f.Data[i + 1], r = f.Data[i + 2];
                 n++;
+                if (r >= 200 && g >= 190 && b >= 150) cream++;
                 if (g >= r * 0.95 && g > b + 15) { green++; continue; }
                 if (r >= 150 && g >= r * 0.72 && b < r * 0.5 && g > b + 50) { green++; continue; }      // 黄色い株(実った・別種の苗)も植えてあるとみなす
                 double br = (double)b / Math.Max(1, r);
@@ -241,6 +242,8 @@ public static class FarmGrid
                 else other++;
             }
         if (n == 0 || other > p.HiddenRatio * n) return ('?', 0);
+        // 看板(クリーム色の板に緑のボタン)や白い物が窓の端にかかっていて緑が混じるなら、株か看板か区別できないので不明にする
+        if (green > 0 && cream >= 0.01 * n && green < 0.05 * n) return ('?', 0);
         // 植え(緑があるか)と水やり(濃い茶色か)は別々に見る
         bool watered = dark > light, planted = green >= p.PlantRatio * n;
         int wetPct = light + dark == 0 ? 0 : (int)Math.Round(100.0 * dark / (light + dark));
