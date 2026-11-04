@@ -31,7 +31,7 @@ public sealed partial class Fisher
         var r = rois.Bobber;
         var region = ((int)(r[0] * f.Width), (int)(r[1] * f.Height), (int)(r[2] * f.Width), (int)(r[3] * f.Height));
         var ex = ExcludeRects(f.Width, f.Height);
-        if (state is SWaitBite or SCastWait) ex.AddRange(decoys);
+        if (state is SWaitBite or SCastWait) ex.AddRange(decoyTracker.Rects);
         // 近くを通る他人のアバターの赤い物体が追跡位置を奪うので、直近に静止を確認した位置の周辺を最優先で探す
         // 水面のウキ(細い)を先に探す。竿先の大きいウキや他人の大きな物体が白玉の多さで勝って、本物を隠すのを防ぐ
         // 幅では絞らない: 視点や距離によって水面のウキも竿先のウキと同じ幅に写る。他人のウキ・アバターは投げる前の位置(decoys)で除く

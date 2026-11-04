@@ -16,10 +16,8 @@ public sealed partial class Fisher
     /// </summary>
     void ForgetStaleView(string outcome)
     {
-        if (outcome == "caught") { staleStreak = 0; return; }
-        if (outcome is not ("missed_bite" or "early" or "escaped" or "unknown") || ++staleStreak < 6) return;
-        staleStreak = 0;
-        landings.Clear(); decoyHeat.Clear();
+        if (!decoyTracker.NoteOutcome(outcome)) return;
+        landings.Clear();
         Log.Warn("釣れない結果が続いたため、覚えた着水位置と他人のウキの位置を捨てて学び直します");
     }
 

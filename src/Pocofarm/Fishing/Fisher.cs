@@ -50,14 +50,12 @@ public sealed partial class Fisher
     Attempt? attempt;
     Bobber? bobber;
     int auditTick, learnTick;
-    readonly Dictionary<(int, int), (int Count, double Last)> decoyHeat = [];     // 自分のウキではない候補(他人のウキ・アバターの赤白)が見えた升目と、その回数・最後に見た時刻
+    readonly DecoyTracker decoyTracker = new();     // 自分のウキではない候補(他人のウキ・アバターの赤白)が見えた升目。投げ後は探索から除く
     int decoyLogTick;
     (int X, int Y)? castFrom;                        // 投げのクリックを送った時点のウキ位置(竿先にぶら下がったウキ)。ここから動かず静止したなら投げは効いていない
     Frame? workFrame;
     Frame? cur;                                     // いま処理中のフレーム(縮小後)。範囲・倍率はこの大きさに合わせてある
-    int staleStreak;
     readonly List<(double X, double Y)> landings = [];     // 釣れたときのウキ位置(画面に対する比率。ウィンドウの大きさが変わっても使える)。自分のウキは毎回ほぼ同じ場所に着水する
-    List<(int, int, int, int)> decoys = [];     // 投げる前から画面にあったウキ候補(他人のウキ・アバターの赤白)。投げ後は探索から除く
     (int X, int Y)? lastPos, castOrigin, expectAway, anchorPos;     // anchorPos: 直近に静止を確認した位置(再開後などで本物のウキを優先して探す)
     bool castMoved;
     double castLastSeen;
