@@ -50,6 +50,7 @@ public sealed class Fisher
     Attempt? attempt;
     Bobber? bobber;
     int auditTick;
+    List<(int, int, int, int)> decoys = [];     // 投げる前から画面にあったウキ候補(他人のウキ・アバターの赤白)。投げ後は探索から除く
     (int X, int Y)? lastPos, castOrigin, expectAway, anchorPos;     // anchorPos: 直近に静止を確認した位置(再開後などで本物のウキを優先して探す)
     bool castMoved;
     double castLastSeen;
@@ -241,6 +242,19 @@ public sealed class Fisher
     // ---------------------------------------------------------------- 状態遷移
 
     /// <summary>投げクリックを送って着水待ちへ。ウキが引く前の位置に残っていれば引けていないので投げない。</summary>
+    /// <summary>投げる瞬間に見えているウキ候補は自分のものではない(自分のは投げた後に現れる)ので、位置を覚えて投げ後の探索から外す。</summary>
+    void RememberDecoys()
+    {
+        decoys = [];
+        if (frame is not { } f) return;
+        var r = rois.Bobber;
+        var region = ((int)(r[0] * f.Width), (int)(r[1] * f.Height), (int)(r[2] * f.Width), (int)(r[3] * f.Height));
+        int pad = (int)(cfg.BobberDecoyPad * scale);
+        foreach (var c in BobberDetector.Candidates(f, region, null, exclude: ExcludeRects(f.Width, f.Height), scale: scale, p: BobberParams.From(cfg)))
+            decoys.Add((c.X - c.W / 2 - pad, c.Y - pad, c.X + c.W / 2 + pad, c.Y + c.H + pad * 3));
+        if (decoys.Count > 0) Log.Info($"投げる前から見えているウキ候補 {decoys.Count} 件を除外します");
+    }
+
     void StartCast(double now, Bobber? b)
     {
         if (expectAway is { } ea && b is not null && Math.Abs(b.X - ea.X) < cfg.BobberNearPx * scale && Math.Abs(b.Y - ea.Y) < cfg.BobberNearPx * scale)
@@ -256,6 +270,7 @@ public sealed class Fisher
             return;
         }
         if (!Click(ClickKind.Cast)) return;
+        RememberDecoys();
         castDt = Now - lastReelAt;
         expectAway = null;
         dip = NewDip();
@@ -381,6 +396,7 @@ public sealed class Fisher
         var r = rois.Bobber;
         var region = ((int)(r[0] * f.Width), (int)(r[1] * f.Height), (int)(r[2] * f.Width), (int)(r[3] * f.Height));
         var ex = ExcludeRects(f.Width, f.Height);
+        if (state is SWaitBite or SCastWait) ex.AddRange(decoys);
         // 近くを通る他人のアバターの赤い物体が追跡位置を奪うので、直近に静止を確認した位置の周辺を最優先で探す
         // 水面のウキ(細い)を先に探す。竿先の大きいウキや他人の大きな物体が白玉の多さで勝って、本物を隠すのを防ぐ
         int narrow = (int)(cfg.RodTipBobberWidth * scale);

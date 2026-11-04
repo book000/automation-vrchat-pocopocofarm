@@ -24,6 +24,17 @@ public static class BobberDetector
     public static Bobber? Detect(Frame img, (int X0, int Y0, int X1, int Y1)? region = null, (int X, int Y)? near = null, int radius = 160,
         IReadOnlyList<(int X0, int Y0, int X1, int Y1)>? exclude = null, double scale = 1.0, int maxWidth = int.MaxValue, BobberParams? p = null)
     {
+        Bobber? best = null;
+        foreach (var c in Candidates(img, region, near, radius, exclude, scale, maxWidth, p))
+            if (best is null || c.Score > best.Score) best = c;
+        return best;
+    }
+
+    /// <summary>条件に合うウキ候補をすべて返す(他人のウキなど、本物でないものを先に把握するため)。</summary>
+    public static List<Bobber> Candidates(Frame img, (int X0, int Y0, int X1, int Y1)? region = null, (int X, int Y)? near = null, int radius = 160,
+        IReadOnlyList<(int X0, int Y0, int X1, int Y1)>? exclude = null, double scale = 1.0, int maxWidth = int.MaxValue, BobberParams? p = null)
+    {
+        var found = new List<Bobber>();
         p ??= BobberParams.Default;
         var (x0, y0, x1, y1) = region ?? (0, 0, img.Width, img.Height);
         x0 = Math.Max(0, x0); y0 = Math.Max(0, y0); x1 = Math.Min(img.Width, x1); y1 = Math.Min(img.Height, y1);
@@ -34,7 +45,7 @@ public static class BobberDetector
             x1 = Math.Min(x1, n.X + radius); y1 = Math.Min(y1, n.Y + radius);
         }
         int ox = x0, oy = y0, w = x1 - x0, h = y1 - y0;
-        if (w <= 0 || h <= 0) return null;
+        if (w <= 0 || h <= 0) return found;
 
         int n0 = w * h;
         var fl = Classify(img, x0, y0, w, h, p);
@@ -46,7 +57,6 @@ public static class BobberDetector
                 for (int x = a; x < c; x++) fl[y * w + x] &= unchecked((byte)~Red);
         }
 
-        Bobber? best = null;
         var stack = new Stack<int>();
         for (int start = 0; start < n0; start++)
         {
@@ -74,9 +84,9 @@ public static class BobberDetector
 
             // 白だけで競うと、髪飾りや服の白が多い他人のアバターが本物に勝つ。赤い棒の面積も加点して、ウキらしい(白+太い赤)ものを選ぶ
             var cand = new Bobber(minX + ox + cw / 2, minY + oy, cw, ch, wc, wc + 8 * area);
-            if (best is null || cand.Score > best.Score) best = cand;
+            found.Add(cand);
         }
-        return best;
+        return found;
     }
 
     /// <summary>画素ごとのフラグ(Red / White)を作る。毎フレーム確保すると LOH を食うので使い回す。</summary>
