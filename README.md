@@ -31,7 +31,7 @@ cast -> wait for the bobber to settle -> detect a dip and reel in -> read the re
 
 ## Quick start
 
-1. Get the executable: download a build from the CI run artifacts, or [build it yourself](docs/development.md#build-test-publish).
+1. Get the executable: download `pocofarm.exe` from the [Releases](../../releases) page (tagged `v*` builds), or [build it yourself](docs/development.md#build-test-publish).
 2. Create the working directory for the tool (any folder) and put `pocofarm.exe` there. Runtime files (`config.json`, `data/`) are created relative to the folder passed as `--root`.
 3. Start VRChat, join the world, hold the fishing rod, and face the pond.
 4. Run a first check (optional but recommended):

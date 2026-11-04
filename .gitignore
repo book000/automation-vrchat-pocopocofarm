@@ -16,3 +16,7 @@ TestResults/
 .idea/
 *.user
 *.suo
+
+# Local tooling / previous layout leftovers
+.claude/
+csharp/
