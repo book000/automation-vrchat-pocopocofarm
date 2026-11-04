@@ -30,6 +30,8 @@ public sealed partial class Fisher
     /// </summary>
     void LearnDecoys(Frame f, Bobber? tip)
     {
+        // 再起動直後は、前のプロセスが投げたままの自分のウキが水面に見えている。これを他人のものと覚えると本物の着水位置を除外して投げ失敗が続くので、最初の試行が終わるまでは覚えない
+        if (startupAdopt && recorder.SessionAttempts == 0) return;
         var r = rois.Bobber;
         var region = ((int)(r[0] * f.Width), (int)(r[1] * f.Height), (int)(r[2] * f.Width), (int)(r[3] * f.Height));
         int pad = (int)(cfg.BobberDecoyPad * scale);

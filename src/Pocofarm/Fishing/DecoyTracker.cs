@@ -62,7 +62,7 @@ internal sealed class DecoyTracker
     public bool NoteOutcome(string outcome)
     {
         if (outcome == "caught") { staleStreak = 0; return false; }
-        if (outcome is not ("missed_bite" or "early" or "escaped" or "unknown") || ++staleStreak < StaleStreakLimit) return false;
+        if (outcome is not ("missed_bite" or "early" or "escaped" or "unknown" or "cast_failed") || ++staleStreak < StaleStreakLimit) return false;
         staleStreak = 0;
         heat.Clear();
         return true;

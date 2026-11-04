@@ -74,7 +74,14 @@ public class DecoyTrackerTests
         t.NoteOutcome("caught");
         for (int i = 0; i < 5; i++) Assert.False(t.NoteOutcome("escaped"));
         Assert.False(t.NoteOutcome("no_bite_reset"));
-        Assert.False(t.NoteOutcome("cast_failed"));
         Assert.True(t.NoteOutcome("unknown"));
+    }
+
+    [Fact]
+    public void CastFailuresAlsoClearStaleMemory()
+    {
+        var t = new DecoyTracker();
+        for (int i = 0; i < DecoyTracker.StaleStreakLimit - 1; i++) Assert.False(t.NoteOutcome("cast_failed"));
+        Assert.True(t.NoteOutcome("cast_failed"));
     }
 }
