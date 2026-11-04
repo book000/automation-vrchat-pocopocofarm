@@ -32,7 +32,7 @@ public sealed partial class Fisher
 
     void Housekeeping(double now, Frame f)
     {
-        nekos.Flush(state);
+        nekos.Flush(state.Wire());
         prof.Mark("hud");
         if (hud.Poll(now, f, rois) is { } adopted) rois = adopted;
         prof.Mark("audit");

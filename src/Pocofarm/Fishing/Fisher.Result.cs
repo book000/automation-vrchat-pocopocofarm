@@ -61,7 +61,7 @@ public sealed partial class Fisher
             dip = NewDip();
             castOrigin = a.PosBefore;       // 空中の位置から離れたら投げ成功
             castMoved = false; startupAdopt = false; expectAway = null;
-            SetState(SCastWait, "確認クリックが投げになった");
+            SetState(FishState.CastWait, "確認クリックが投げになった");
             return;
         }
         if (best is null)
@@ -71,7 +71,7 @@ public sealed partial class Fisher
             // クリックが投げになった/効かなかった可能性がある。ウキの動きで判断するため着水待ちへ(expectAway は維持)
             dip = NewDip();
             castOrigin = a.PosBefore; castMoved = false; startupAdopt = false;
-            SetState(SCastWait, "結果不明→ウキの動きで状態確認");
+            SetState(FishState.CastWait, "結果不明→ウキの動きで状態確認");
             return;
         }
         var outcome = best.Kind switch { Toast.Caught => "caught", Toast.Early => "early", _ => "escaped" };
@@ -83,6 +83,6 @@ public sealed partial class Fisher
         if (outcome == "caught" && !a.Probe && castFailures == 0) aim.NoteCatch(f, now);      // 視点が合っていた証拠の画面を、補正の基準にする
         tuner.OnOutcome(outcome);
         attempt = null;
-        SetState(SCooldown, outcome);
+        SetState(FishState.Cooldown, outcome);
     }
 }

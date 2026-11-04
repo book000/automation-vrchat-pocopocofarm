@@ -17,7 +17,7 @@ public sealed partial class Fisher
         {
             if (s.Neko is not null)
             {
-                nekos.Note(s, f, state);
+                nekos.Note(s, f, state.Wire());
                 if (s.Toast is null) continue;
             }
             if (s.Toast is null)
@@ -32,20 +32,20 @@ public sealed partial class Fisher
             var a = attempt;
             if (kind is Toast.LevelUp or Toast.Achieve)
             {
-                if (state == SResult && a is not null && s.T >= a.TClick - 0.1)
+                if (state == FishState.ResultWait && a is not null && s.T >= a.TClick - 0.1)
                 {
                     if (!a.Info.Contains(kind)) a.Info.Add(kind);
                     a.InfoUntil = Now + cfg.InfoWaitSeconds;      // 釣果通知が後から出るのを待つ
                 }
-                else if (newAppearance) events.Write("toast_info", ("kind", kind), ("text", s.Toast.Text), ("state", state));
+                else if (newAppearance) events.Write("toast_info", ("kind", kind), ("text", s.Toast.Text), ("state", state.Wire()));
                 continue;
             }
             if (kind == Toast.Aim)
             {
-                if (newAppearance && state is SCastWait or SCooldown) AimError(s, f);
+                if (newAppearance && state is FishState.CastWait or FishState.Cooldown) AimError(s, f);
                 continue;
             }
-            if (state == SResult && a is not null && s.T >= a.TClick - 0.1)
+            if (state == FishState.ResultWait && a is not null && s.T >= a.TClick - 0.1)
             {
                 a.FirstSeen ??= s.T;
                 if (a.Best is null || s.Toast.Score >= a.Best.Score) { a.Best = s.Toast; a.Engine = s.Engine; }
@@ -66,7 +66,7 @@ public sealed partial class Fisher
             events.Write("toast_unlinked", ("kind", t.Kind), ("text", t.Text), ("state", "startup_stale"));
             return;      // 起動前から表示されていた古い通知
         }
-        if (t.Kind == Toast.Escaped && state is SWaitBite or SCastWait)
+        if (t.Kind == Toast.Escaped && state is FishState.WaitBite or FishState.CastWait)
         {
             // 一時停止の間は引けないので、停止中に過ぎた当たりは検出の見逃しではない
             if (Now - control.LastResumeAt < cfg.ResumeEscapeGrace)
@@ -78,9 +78,9 @@ public sealed partial class Fisher
                 new() { ["trace"] = TraceTail(90), ["pecks_seen"] = pecks });
             return;
         }
-        var name = SaveEvidence(f, $"unlinked_{t.Kind}", new { text = t.Text, state, engine = s.Engine });
-        events.Write("toast_unlinked", ("kind", t.Kind), ("text", t.Text), ("fish", t.Fish), ("state", state), ("evidence", name));
-        Log.Warn($"紐付かないトースト: {t.Kind} ({t.Fish}) 状態={state} OCR={t.Text}");
+        var name = SaveEvidence(f, $"unlinked_{t.Kind}", new { text = t.Text, state = state.Wire(), engine = s.Engine });
+        events.Write("toast_unlinked", ("kind", t.Kind), ("text", t.Text), ("fish", t.Fish), ("state", state.Wire()), ("evidence", name));
+        Log.Warn($"紐付かないトースト: {t.Kind} ({t.Fish}) 状態={state.Wire()} OCR={t.Text}");
     }
 
     /// <summary>どの種別にも当てはまらない文字列。見落とし調査のため重複を避けつつ記録する。</summary>
@@ -95,14 +95,14 @@ public sealed partial class Fisher
         // 釣りと関係のない画面の文字は未分類の警告にせず、種別ごとに数える(本当の取りこぼしを目立たせるため)
         if (ToastNoise.Category(s.Text) is { } other)
         {
-            events.Write("toast_other", ("category", other), ("text", s.Text), ("state", state));
+            events.Write("toast_other", ("category", other), ("text", s.Text), ("state", state.Wire()));
             return;
         }
         var (prev, t0) = unclassifiedLast;
         if (s.Text[..Math.Min(8, s.Text.Length)] == prev[..Math.Min(8, prev.Length)] && s.T - t0 < 5) return;
         unclassifiedLast = (s.Text, s.T);
-        var name = SaveEvidence(f, "unclassified_toast", new { text = s.Text, engine = s.Engine, state });
-        events.Write("toast_unclassified", ("text", s.Text), ("state", state), ("evidence", name));
+        var name = SaveEvidence(f, "unclassified_toast", new { text = s.Text, engine = s.Engine, state = state.Wire() });
+        events.Write("toast_unclassified", ("text", s.Text), ("state", state.Wire()), ("evidence", name));
         Log.Warn($"未分類のトースト領域テキスト: {s.Text}");
     }
 

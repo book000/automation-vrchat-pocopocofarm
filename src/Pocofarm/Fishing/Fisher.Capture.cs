@@ -35,7 +35,7 @@ public sealed partial class Fisher
         hwnd = WinApi.FindWindow(cfg.WindowTitle);
         if (hwnd == 0)
         {
-            SetState(SWaitWindow, "VRChat ウィンドウを待機中");
+            SetState(FishState.WaitWindow, "VRChat ウィンドウを待機中");
             return false;
         }
         try
@@ -55,7 +55,7 @@ public sealed partial class Fisher
             status.Set("message", $"キャプチャ失敗: {ex.Message}");
             return false;
         }
-        if (state == SWaitWindow) SetState(SCooldown, "キャプチャ開始");
+        if (state == FishState.WaitWindow) SetState(FishState.Cooldown, "キャプチャ開始");
         return true;
     }
 
@@ -74,7 +74,7 @@ public sealed partial class Fisher
             {
                 errCount++;
                 Log.Exception("ループ内エラー", ex);
-                if (Now - lastErr > 10) { events.Write("error", ("message", ex.Message), ("state", state)); lastErr = Now; }
+                if (Now - lastErr > 10) { events.Write("error", ("message", ex.Message), ("state", state.Wire())); lastErr = Now; }
                 if (errCount >= 5 && cap is not null) { cap.Dispose(); cap = null; }
                 Thread.Sleep((int)(Math.Min(2.0, 0.2 * errCount) * 1000));
             }
@@ -95,12 +95,12 @@ public sealed partial class Fisher
     /// <summary>視点が動いている間はウキの位置変化を沈みと誤認しないよう、静止判定をやり直す。</summary>
     void OnViewChange()
     {
-        if (state == SWaitBite)
+        if (state == FishState.WaitBite)
         {
             Log.Info("視点移動を検出。当たり待ちを仕切り直します");
             castOrigin = null; startupAdopt = true;
             lastPos = null;
-            SetState(SCastWait, "視点移動→再静止待ち");
+            SetState(FishState.CastWait, "視点移動→再静止待ち");
         }
         dip = NewDip();
     }
@@ -110,13 +110,13 @@ public sealed partial class Fisher
     {
         Log.Warn($"処理が{gap:F1}秒途切れました(キャプチャ断の可能性)。ウキの静止判定をやり直します"
             + $" [gc pause={GC.GetTotalPauseDuration().TotalMilliseconds:F0}ms gen0/1/2={GC.CollectionCount(0)}/{GC.CollectionCount(1)}/{GC.CollectionCount(2)} frameAge={(cap is null ? -1 : Now - cap.LatestAt):F2}s]");
-        events.Write("gap", ("seconds", Math.Round(gap, 1)), ("state", state));
+        events.Write("gap", ("seconds", Math.Round(gap, 1)), ("state", state.Wire()));
         dip = NewDip();
         lastPos = null;
-        if (state == SWaitBite)
+        if (state == FishState.WaitBite)
         {
             castOrigin = null; startupAdopt = true;
-            SetState(SCastWait, "キャプチャ断→再静止待ち");
+            SetState(FishState.CastWait, "キャプチャ断→再静止待ち");
         }
     }
 
@@ -168,7 +168,7 @@ public sealed partial class Fisher
         if (fresh)
         {
             fpsN++;
-            if (viewMotion.Update(f, now) && state is SWaitBite or SCastWait) OnViewChange();
+            if (viewMotion.Update(f, now) && state is FishState.WaitBite or FishState.CastWait) OnViewChange();
             prof.Mark("detect");
             var b = DetectBobber(f);
             bobber = b;

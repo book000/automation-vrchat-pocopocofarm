@@ -20,7 +20,7 @@ public sealed partial class Fisher
             castOrigin = null;
             startupAdopt = true;
             pecks = 0;
-            SetState(SCastWait, "引き未反映→再静止待ち");
+            SetState(FishState.CastWait, "引き未反映→再静止待ち");
             return;
         }
         if (!Click(ClickKind.Cast)) return;
@@ -33,7 +33,7 @@ public sealed partial class Fisher
         castOrigin = null;
         castMoved = false;
         castLastSeen = Now;
-        SetState(SCastWait, "投げクリック送信");
+        SetState(FishState.CastWait, "投げクリック送信");
     }
     /// <summary>ウキが静止して当たり待ち態勢に入ったとき。投げの成否を確認する。</summary>
     void OnArmed(double now)
@@ -43,7 +43,7 @@ public sealed partial class Fisher
         castVerified = castVerified || castMoved;
         if (castVerified) unverifiedWait = cfg.UnverifiedWait;
         startupAdopt = false;
-        SetState(SWaitBite, $"ウキ静止 base={dip.BaseY:F0}");
+        SetState(FishState.WaitBite, $"ウキ静止 base={dip.BaseY:F0}");
         anchorPos = lastPos;
         Log.Info($"ウキ静止を確認 (x,y)={lastPos} 幅={dip.BaseW:F0}");
         if (castDt >= 0) { Log.Info($"[castlock] dt={castDt:F2} ok"); tuner.OnCastSucceeded(castDt); castDt = -1; }
@@ -62,13 +62,13 @@ public sealed partial class Fisher
             Trace = trace.TakeLast(60).Select(x => new[] { Math.Round(x.T, 2), x.Y, (double)x.W }).ToList(),
             FrameClick = f.Clone(), TArmed = tArmed, BaseW = dip.BaseW,
         };
-        SetState(SResult, why);
+        SetState(FishState.ResultWait, why);
     }
     void Step(double now, Frame f, Bobber? b, bool fresh)
     {
         switch (state)
         {
-            case SCooldown:
+            case FishState.Cooldown:
             {
                 double wait = recorder.SessionAttempts > 0 ? cfg.RecastDelay : 0.5;
                 // ゲームは直前の引き(釣果)から約 1.8 秒は投げを受け付けない。結果の確定が早いと RecastDelay だけでは足りないので、引きクリックからも数える
@@ -77,7 +77,7 @@ public sealed partial class Fisher
                 if (now - tState >= wait && now - lastReelAt >= tuner.ReelToCast && now - recorder.LastCaughtAt >= cfg.AfterCatchCastMin && !StartupProbe(now, b)) StartCast(now, b);
                 break;
             }
-            case SCastWait:
+            case FishState.CastWait:
             {
                 if (b is not null) castLastSeen = now;
                 if (b is not null && !startupAdopt && fresh)
@@ -102,7 +102,7 @@ public sealed partial class Fisher
                         castFailures++;
                         if (castDt >= 0) { Log.Info($"[castlock] dt={castDt:F2} fail"); tuner.OnCastFailed(castDt); castDt = -1; }
                         RecordAttempt("cast_failed", null, f, null, $"投げが不発(ウキが竿先に残った・連続{castFailures}回)");
-                        SetState(SCooldown, "cast_failed");
+                        SetState(FishState.Cooldown, "cast_failed");
                         dip = NewDip();
                         // 待ち時間では直らない連続の不発(視線のずれなど)は、間隔を空けて、気づけるよう通知する
                         if (castFailures >= 3)
@@ -127,7 +127,7 @@ public sealed partial class Fisher
                 if (now - tState > cfg.CastTimeout || (!startupAdopt && now - castLastSeen > cfg.CastLostSeconds)) CastFailed(f);
                 break;
             }
-            case SWaitBite:
+            case FishState.WaitBite:
             {
                 var ev = fresh || b is null ? dip.Update(now, b) : null;
                 if (ev == "dip")
@@ -139,7 +139,7 @@ public sealed partial class Fisher
                 else if (now - tArmed > (castVerified ? tuner.BiteTimeout() : unverifiedWait)) NoBite(now, f);
                 break;
             }
-            case SResult:
+            case FishState.ResultWait:
                 FinishResult(now, f);
                 break;
         }
@@ -170,6 +170,6 @@ public sealed partial class Fisher
             Probe = true,
             Trace = trace.TakeLast(60).Select(x => new[] { Math.Round(x.T, 2), x.Y, (double)x.W }).ToList(),
         };
-        SetState(SResult, "当たりなし確認クリック");
+        SetState(FishState.ResultWait, "当たりなし確認クリック");
     }
 }

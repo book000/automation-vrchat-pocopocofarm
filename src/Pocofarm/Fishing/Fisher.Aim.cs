@@ -14,7 +14,7 @@ public sealed partial class Fisher
         castFailures++;
         RecordAttempt("cast_failed", s.Toast, f, null, $"視線が池を向いていない(連続{castFailures}回)");
         status.Set("message", castFailures >= 3 ? "投げが池に届いていません。視線を池に向けてください" : "");
-        SetState(SCooldown, "aim_error");
+        SetState(FishState.Cooldown, "aim_error");
         if (castFailures >= 3)
         {
             tState = Now + CastFailBackoff();
@@ -70,7 +70,7 @@ public sealed partial class Fisher
         {
             castFailures = 0; castAlerted = false;
             status.Set("message", "");
-            SetState(SCooldown, "aim_recovered");
+            SetState(FishState.Cooldown, "aim_recovered");
             return true;
         }
         AlertCastFailures();
@@ -87,7 +87,7 @@ public sealed partial class Fisher
             status.Set("message", "投げに連続失敗: 視線が池を向いているか確認してください");
             AlertCastFailures();
         }
-        SetState(SCooldown, "cast_failed");
+        SetState(FishState.Cooldown, "cast_failed");
         if (castFailures >= 3) tState = Now + CastFailBackoff();
         dip = NewDip();
     }

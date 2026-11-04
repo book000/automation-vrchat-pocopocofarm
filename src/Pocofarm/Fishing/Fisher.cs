@@ -15,8 +15,6 @@ namespace Pocofarm.Fishing;
 /// </summary>
 public sealed partial class Fisher
 {
-    const string SWaitWindow = "wait_window", SCooldown = "cooldown", SCastWait = "cast_wait", SWaitBite = "wait_bite", SResult = "result_wait";
-
     readonly Config cfg;
     readonly Paths paths;
     readonly bool dryRun;
@@ -45,7 +43,7 @@ public sealed partial class Fisher
     readonly AttemptRecorder recorder;
     double lastFind, lastReelAt, castDt = -1;     // castDt: 直近の引きから投げまでの実測間隔(-1 は未計測)
     DipDetector dip;
-    string state = SWaitWindow;
+    FishState state = FishState.WaitWindow;
     double tState = EventLog.Now();
     Attempt? attempt;
     Bobber? bobber;
@@ -122,11 +120,11 @@ public sealed partial class Fisher
 
     DipDetector NewDip() => new(DipParams.From(cfg, scale));
 
-    void SetState(string s, string msg = "")
+    void SetState(FishState s, string msg = "")
     {
-        if (s != state) Log.Info($"状態: {state} → {s} {msg}");
+        if (s != state) Log.Info($"状態: {state.Wire()} → {s.Wire()} {msg}");
         state = s; tState = Now;
-        status.Set("state", s); status.Set("message", msg);
+        status.Set("state", s.Wire()); status.Set("message", msg);
     }
 
     /// <summary>探索範囲の除外矩形(画素座標)。</summary>
