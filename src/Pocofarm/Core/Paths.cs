@@ -18,6 +18,7 @@ public sealed class Paths(string root)
     public string Tuning => Path.Combine(Data, "tuning.json");
     /// <summary>釣れたときのウキ位置(画面比率)の記憶。再起動後も着水位置を引き継ぐ。</summary>
     public string Landings => Path.Combine(Data, "landings.json");
+    public string Decoys => Path.Combine(Data, "decoys.json");
     /// <summary>視点補正の基準にする、釣れたときの画面(128x72 のグレー PNG)。</summary>
     public string AimReference => Path.Combine(Data, "aim_reference.png");
     public string CameraPose => Path.Combine(Data, "camera_pose.json");

@@ -8,6 +8,18 @@ public class DecoyTrackerTests
         t.Learn(cands.Select(c => (c.Item1, c.Item2)), tip, away, pad: 10, cell: 20, now: now, keepSeconds: 100);
 
     [Fact]
+    public void ExportThenImportRestoresExcludedRects()
+    {
+        var a = new DecoyTracker();
+        Learn(a, [(105, 105)]);
+        Learn(a, [(110, 101)]);
+        var b = new DecoyTracker();
+        b.Import(a.Export(), cell: 20);
+        Assert.Equal(a.Rects, b.Rects);
+        Assert.Equal(a.CellCount, b.CellCount);
+    }
+
+    [Fact]
     public void SeenOnceIsNotExcluded()
     {
         var t = new DecoyTracker();

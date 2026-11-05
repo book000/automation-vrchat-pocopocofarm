@@ -21,6 +21,18 @@ internal sealed class DecoyTracker
     /// <summary>覚えている升目の数。</summary>
     public int CellCount => heat.Count;
 
+    /// <summary>覚えた升目(升目の添字・回数・最後に見た時刻)を取り出す。再起動をまたいで引き継ぐ用。</summary>
+    public List<double[]> Export() => heat.Select(kv => new double[] { kv.Key.Item1, kv.Key.Item2, kv.Value.Count, kv.Value.Last }).ToList();
+
+    /// <summary>Export した升目を戻し、除外矩形を作り直す。</summary>
+    public void Import(IEnumerable<double[]> cells, int cell)
+    {
+        foreach (var c in cells.Where(c => c.Length == 4))
+            heat[((int)c[0], (int)c[1])] = (Math.Clamp((int)c[2], 1, MaxCount), c[3]);
+        Rects = heat.Where(kv => kv.Value.Count >= 2)
+            .Select(kv => ((kv.Key.Item1 - 1) * cell, (kv.Key.Item2 - 1) * cell, (kv.Key.Item1 + 2) * cell, (kv.Key.Item2 + 2) * cell)).ToList();
+    }
+
     /// <summary>覚えた升目も除外矩形もすべて捨てる。</summary>
     public void Clear() { heat.Clear(); Rects = []; staleStreak = 0; }
 

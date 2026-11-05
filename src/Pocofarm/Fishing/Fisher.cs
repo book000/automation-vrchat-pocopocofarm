@@ -49,6 +49,9 @@ public sealed partial class Fisher
     Attempt? attempt;
     Bobber? bobber;
     int auditTick, learnTick;
+    SavedDecoys? pendingDecoys;          // 前回の除外の升目(最初のフレームで画面の大きさを確かめてから使う)
+    double decoysSavedAt;
+    readonly List<(int X, int Y, double At)> earlyPositions = [];      // 最近「早すぎ」になった位置(同じ場所の繰り返しを見つける)
     readonly DecoyTracker decoyTracker = new();     // 自分のウキではない候補(他人のウキ・アバターの赤白)が見えた升目。投げ後は探索から除く
     int decoyLogTick;
     (int X, int Y)? castFrom;                        // 投げのクリックを送った時点のウキ位置(竿先にぶら下がったウキ)。ここから動かず静止したなら投げは効いていない
@@ -104,6 +107,7 @@ public sealed partial class Fisher
         nekos = new NekoCollector(cfg, events, SaveEvidence);
         tuner = new AutoTuner(cfg, paths.Tuning);
         LoadLandings();
+        LoadDecoys();
         prof = new LoopProfiler(cfg, status);
         reader = new ToastReader(cfg);
         hud = new HudMonitor(cfg, paths, events, status);

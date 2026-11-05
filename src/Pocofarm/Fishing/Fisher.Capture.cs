@@ -183,6 +183,7 @@ public sealed partial class Fisher
                 landings.Clear(); SaveLandings(); decoyTracker.Clear();
                 Log.Warn($"画面の縦横比が変わったため、覚えた着水位置と他人のウキの位置を捨てて学び直します({lastAspect:F2} → {aspect:F2})");
             }
+            if (lastAspect == 0) ApplyPendingDecoys(f);
             lastAspect = aspect;
         }
         if (fresh)
