@@ -139,18 +139,37 @@ public class AimTests : IDisposable
         Assert.Contains(EventLog.Read(Path.Combine(dir, "data", "events.jsonl")), e => e.Str("type") == "aim_recover" && e.Str("result") == "Aligned");
     }
 
-    [Fact]
-    public void RecoverSweepsVerticallyWhenReferenceSceneIsOffScreen()
+    // 横は 1 周(画面幅 4 つ分 = 4400 画素)で元に戻る世界。世界が見えるのは基準を含む一部の向き(0〜VW 画素)と高さ(0〜VH 画素)だけで、それ以外は平坦な画面(空など)
+    static Frame Panorama(double ox, double oy)
+    {
+        double x = ((ox % 4400) + 4400) % 4400;
+        return x > VW || oy < 0 || oy > VH ? new Frame(VW, VH) : View(WorldA, x, oy);
+    }
+
+    [Theory]
+    [InlineData(500, -300)]        // 空を向いている(高さだけずれている)
+    [InlineData(3140, 300)]        // 横へ大きく振ってしまった(高さは合っている)
+    [InlineData(2700, -300)]       // 縦も横もずれている
+    public void RecoverSweepsToFindReferenceSceneWhenOffScreen(double ox0, double oy0)
     {
         var rec = NewRecovery();
         rec.NoteCatch(View(WorldA, 500, 300), 1000);
-        // 空を向いていて、基準の場面が画面に無い(平坦な画面)。下へ振るうちに世界が見えてくる
-        double oy = -800;
-        Frame Scene() => oy < 0 ? new Frame(VW, VH) : View(WorldA, 500, oy);
-        Frame? Look(int dx, int dy) { oy += dy * VH / 450.0; return Scene(); }
-        var result = rec.Recover(Scene(), Look, () => false);
+        double ox = ox0, oy = oy0;
+        Frame Look(int dx, int dy) { ox += dx * VW / 800.0; oy += dy * VH / 450.0; return Panorama(ox, oy); }
+        var result = rec.Recover(Panorama(ox, oy), Look, () => false);
         Assert.Equal(AimRecoverResult.Aligned, result);
-        Assert.True(Math.Abs(oy - 300) <= 0.03 * VH, $"final oy {oy}");
+        Assert.True(Math.Abs(((ox - 500) % 4400 + 4400) % 4400) <= 0.03 * VW && Math.Abs(oy - 300) <= 0.03 * VH, $"final {ox},{oy}");
+    }
+
+    [Fact]
+    public void RecoverSweepReturnsToStartWhenSceneIsNeverFound()
+    {
+        var rec = NewRecovery();
+        rec.NoteCatch(View(WorldA, 500, 300), 1000);
+        double ox = 2000, oy = 250;      // 世界が見える向きが 1 周のどこにも掛からない高さ
+        Frame Look(int dx, int dy) { ox += dx * VW / 800.0; oy += dy * VH / 450.0; return new Frame(VW, VH); }
+        Assert.Equal(AimRecoverResult.NoMatch, rec.Recover(new Frame(VW, VH), Look, () => false));
+        Assert.True(Math.Abs(ox - 2000) < 1 && Math.Abs(oy - 250) < 1, $"final {ox},{oy}");
     }
 
     [Fact]

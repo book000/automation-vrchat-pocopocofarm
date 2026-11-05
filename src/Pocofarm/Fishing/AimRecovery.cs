@@ -86,11 +86,11 @@ public sealed class AimRecovery
             if (m is null)
             {
                 Log.Info($"[aim] 基準の場面が見つかりません(補正{moves}回目)");
-                // 空や地面を向いているなど、基準の場面が画面に入っていないときは、縦に少しずつ振って探す(最初の 1 回だけ)
+                // 空や地面・別の方向を向いているなど、基準の場面が画面に入っていないときは、縦横に振って探す(最初の 1 回だけ)
                 if (!swept && lastMove is null && moves == 0)
                 {
                     swept = true;
-                    if (SweepVertical(rf, look, stop, gy, minScore) is { } found) { cur = found; moves++; continue; }
+                    if (SweepScene(rf, look, stop, gx, gy, minScore) is { } found) { cur = found; moves++; continue; }
                 }
                 // 動かしすぎて場面から外れたときだけ、1 回戻してゲインを半分にやり直す
                 if (lastMove is not { } lm || lost++ >= 1) return Finish(AimRecoverResult.NoMatch, moves, first, prev, gx, gy);
@@ -132,30 +132,51 @@ public sealed class AimRecovery
         }
     }
 
-    const double SweepStep = 0.4;      // 1 回に振る量(画面の高さに対する比率)。基準の一部が画面に残る程度
-    const int SweepSteps = 6;
+    const double SweepStep = 0.4;      // 1 回に振る量(画面の幅・高さに対する比率)。基準の一部が画面に残る程度
+    const int SweepCols = 10;          // 横は 1 周ぶん(0.4 × 10 = 画面幅 4 つ分)の範囲を往復する
+    static readonly int[] SweepRows = [0, 1, -1, 2, -2];      // 縦は今の高さから近い順(正が下向き)
     const double SweepMinScore = 0.85;      // 振っている途中の偶然の似た場面(実測 0.65〜0.67)を拾わないよう、本物の一致(実測 0.95 以上)に近い高さを求める
 
     /// <summary>
-    /// 基準の場面が画面に無いとき、下向き→上向きの順に縦へ振って場面を探す。見つかればその画面を返す。
-    /// 見つからなければ振った分だけ戻して null を返す(視点を動かしっぱなしにしない)。
+    /// 基準の場面が画面に無いとき(マウスを振ってしまった等)、縦は近い高さから順に、各高さで横を 1 周ぶん往復して場面を探す。
+    /// 見つかればその画面を返す。見つからなければ振った分だけ戻して null を返す(視点を動かしっぱなしにしない)。
     /// </summary>
-    static byte[]? SweepVertical(byte[] rf, Func<int, int, Frame?> look, Func<bool> stop, double gy, double minScore)
+    static byte[]? SweepScene(byte[] rf, Func<int, int, Frame?> look, Func<bool> stop, double gx, double gy, double minScore)
     {
-        int step = Math.Max(1, (int)Math.Round(gy * SweepStep));
-        foreach (int dir in new[] { 1, -1 })
+        int stepX = Math.Max(1, (int)Math.Round(gx * SweepStep)), stepY = Math.Max(1, (int)Math.Round(gy * SweepStep));
+        int totX = 0, totY = 0, row = 0, dir = 1;
+        double thr = Math.Max(minScore, SweepMinScore);
+        bool failed = false;
+        byte[]? Move(int dx, int dy)
         {
-            int total = 0;
-            for (int k = 0; k < SweepSteps; k++)
-            {
-                if (stop() || look(0, dir * step) is not { } fr) return null;
-                total += dir * step;
-                var g = ViewAligner.ToGrey(fr);
-                if (ViewAligner.Estimate(rf, g, Math.Max(minScore, SweepMinScore)) is not null) { Log.Info($"[aim] 縦に振って場面を見つけました(dy={total})"); return g; }
-            }
-            if (look(0, -total) is null) return null;
+            if (stop() || look(dx, dy) is not { } fr) { failed = true; return null; }
+            totX += dx; totY += dy;
+            var g = ViewAligner.ToGrey(fr);
+            return ViewAligner.Estimate(rf, g, thr) is not null ? g : null;
         }
+        foreach (int r in SweepRows)
+        {
+            if (r != row)
+            {
+                if (Move(0, (r - row) * stepY) is { } hit) return Found(hit, totX, totY);
+                if (failed) return null;
+                row = r;
+            }
+            for (int c = 1; c < SweepCols; c++)
+            {
+                if (Move(dir * stepX, 0) is { } hit) return Found(hit, totX, totY);
+                if (failed) return null;
+            }
+            dir = -dir;
+        }
+        _ = look(-totX, -totY);      // 元の向きへ戻す(戻せなくても、できることは無い)
         return null;
+    }
+
+    static byte[] Found(byte[] g, int dx, int dy)
+    {
+        Log.Info($"[aim] 振って場面を見つけました(dx={dx}, dy={dy})");
+        return g;
     }
 
     AimRecoverResult Finish(AimRecoverResult r, int moves, AimShift? first, AimShift? last, double gx, double gy)
