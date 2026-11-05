@@ -25,15 +25,13 @@ public sealed partial class Fisher
     /// 引いたのが早すぎた位置を覚え、同じ場所で続けて早すぎになったら、動かないだけで当たらない別物(他人のウキなど)として除外する。
     /// 学んだ着水位置の近くは本物のウキなので対象にしない。
     /// </summary>
-    void NoteEarlyPosition((int X, int Y) p, Frame f, double now)
+    void NoteEarlyPosition((int X, int Y) p, double now)
     {
         int near = (int)(2 * cfg.BobberDecoyCell * scale);
         earlyPositions.RemoveAll(e => now - e.At > 120);
         bool repeated = earlyPositions.Any(e => Math.Abs(e.X - p.X) <= near && Math.Abs(e.Y - p.Y) <= near);
         earlyPositions.Add((p.X, p.Y, now));
-        if (!repeated) return;
-        if (LearnedLanding(f) is { } l && Math.Abs(l.X - p.X) <= near && Math.Abs(l.Y - p.Y) <= near) return;
-        MarkDecoy(p);
+        if (repeated) MarkDecoy(p);
     }
 
     Dictionary<string, object?> RecordAttempt(string outcome, Toast? toast, Frame? f, Attempt? a, string note, Dictionary<string, object?>? extra = null)
@@ -116,7 +114,7 @@ public sealed partial class Fisher
         if (a.Probe && outcome is "early" or "escaped") RecordAttempt("no_bite_reset", best, f, a, outcome == "early" ? "当たりなしで引き直した" : "確認クリックで逃げられた表示(停止中に当たりが過ぎた)");
         else RecordAttempt(outcome, best, f, a, a.PartialNote, a.Info.Count > 0 ? new() { ["info"] = a.Info.ToList() } : null);
         castVerified = true; unverifiedWait = cfg.UnverifiedWait;
-        if (outcome == "early" && !a.Probe && a.PosBefore is { } ep) NoteEarlyPosition(ep, f, now);
+        if (outcome == "early" && !a.Probe && a.PosBefore is { } ep) NoteEarlyPosition(ep, now);
         if (outcome == "caught" && !a.Probe && a.PosBefore is { } lp) { landings.Add((lp.X / (double)f.Width, lp.Y / (double)f.Height)); if (landings.Count > 15) landings.RemoveAt(0); SaveLandings(); }
         if (outcome == "caught" && !a.Probe && castFailures == 0) aim.NoteCatch(f, now);      // 視点が合っていた証拠の画面を、補正の基準にする
         tuner.OnOutcome(outcome);

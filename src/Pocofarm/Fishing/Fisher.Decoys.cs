@@ -53,6 +53,8 @@ public sealed partial class Fisher
     {
         if (pos is not { } p) return;
         if (Now < viewUnsettledUntil) return;
+        // 釣れた実績のある着水位置の近くは本物のウキ。確認クリックのトースト取りこぼしなどで空中と誤判定しても、除外しない
+        if (cur is { } f && LearnedLanding(f) is { } l && Math.Abs(l.X - p.X) <= 2 * cfg.BobberDecoyCell * scale && Math.Abs(l.Y - p.Y) <= 2 * cfg.BobberDecoyCell * scale) return;
         int cell = Math.Max(8, (int)(cfg.BobberDecoyCell * scale));
         decoyTracker.Mark(p.X, p.Y, (int)(cfg.BobberDecoyPad * scale), cell, Now);
         Log.Info($"確認クリックで空中だったため、({p.X}, {p.Y}) の候補をウキではないものとして除外します");
