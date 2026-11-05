@@ -140,6 +140,20 @@ public class AimTests : IDisposable
     }
 
     [Fact]
+    public void RecoverSweepsVerticallyWhenReferenceSceneIsOffScreen()
+    {
+        var rec = NewRecovery();
+        rec.NoteCatch(View(WorldA, 500, 300), 1000);
+        // 空を向いていて、基準の場面が画面に無い(平坦な画面)。下へ振るうちに世界が見えてくる
+        double oy = -800;
+        Frame Scene() => oy < 0 ? new Frame(VW, VH) : View(WorldA, 500, oy);
+        Frame? Look(int dx, int dy) { oy += dy * VH / 450.0; return Scene(); }
+        var result = rec.Recover(Scene(), Look, () => false);
+        Assert.Equal(AimRecoverResult.Aligned, result);
+        Assert.True(Math.Abs(oy - 300) <= 0.03 * VH, $"final oy {oy}");
+    }
+
+    [Fact]
     public void RecoverGivesUpWhenInputHasNoEffect()
     {
         var rec = NewRecovery();
@@ -155,9 +169,8 @@ public class AimTests : IDisposable
         var rec = NewRecovery();
         Assert.Equal(AimRecoverResult.NoReference, rec.Recover(View(WorldA, 500, 300), (_, _) => null, () => false));
         rec.NoteCatch(View(WorldA, 500, 300), 1000);
-        var other = new FakeView(WorldB, 500, 300, 1, 1);
+        var other = new FakeView(WorldB, 500, 300, 0, 0);
         Assert.Equal(AimRecoverResult.NoMatch, rec.Recover(other.Current, other.Look, () => false));
-        Assert.Equal(0, other.Calls);
         var view = new FakeView(WorldA, 350, 300, 1, 1);
         Assert.Equal(AimRecoverResult.Aborted, rec.Recover(view.Current, view.Look, () => true));
         Assert.Equal(0, view.Calls);

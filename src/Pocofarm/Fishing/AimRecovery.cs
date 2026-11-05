@@ -78,6 +78,7 @@ public sealed class AimRecovery
         AimShift? first = null, prev = null;
         (int X, int Y)? lastMove = null;
         int moves = 0, lost = 0, idle = 0;
+        bool swept = false;
         while (true)
         {
             if (stop()) return Finish(AimRecoverResult.Aborted, moves, first, prev, gx, gy);
@@ -85,6 +86,12 @@ public sealed class AimRecovery
             if (m is null)
             {
                 Log.Info($"[aim] 基準の場面が見つかりません(補正{moves}回目)");
+                // 空や地面を向いているなど、基準の場面が画面に入っていないときは、縦に少しずつ振って探す(最初の 1 回だけ)
+                if (!swept && lastMove is null && moves == 0)
+                {
+                    swept = true;
+                    if (SweepVertical(rf, look, stop, gy, minScore) is { } found) { cur = found; moves++; continue; }
+                }
                 // 動かしすぎて場面から外れたときだけ、1 回戻してゲインを半分にやり直す
                 if (lastMove is not { } lm || lost++ >= 1) return Finish(AimRecoverResult.NoMatch, moves, first, prev, gx, gy);
                 gx /= 2; gy /= 2; lastMove = null;
@@ -123,6 +130,31 @@ public sealed class AimRecovery
             prev = m; lastMove = (dx, dy);
             cur = ViewAligner.ToGrey(next);
         }
+    }
+
+    const double SweepStep = 0.4;      // 1 回に振る量(画面の高さに対する比率)。基準の一部が画面に残る程度
+    const int SweepSteps = 6;
+
+    /// <summary>
+    /// 基準の場面が画面に無いとき、下向き→上向きの順に縦へ振って場面を探す。見つかればその画面を返す。
+    /// 見つからなければ振った分だけ戻して null を返す(視点を動かしっぱなしにしない)。
+    /// </summary>
+    static byte[]? SweepVertical(byte[] rf, Func<int, int, Frame?> look, Func<bool> stop, double gy, double minScore)
+    {
+        int step = Math.Max(1, (int)Math.Round(gy * SweepStep));
+        foreach (int dir in new[] { 1, -1 })
+        {
+            int total = 0;
+            for (int k = 0; k < SweepSteps; k++)
+            {
+                if (stop() || look(0, dir * step) is not { } fr) return null;
+                total += dir * step;
+                var g = ViewAligner.ToGrey(fr);
+                if (ViewAligner.Estimate(rf, g, minScore) is not null) { Log.Info($"[aim] 縦に振って場面を見つけました(dy={total})"); return g; }
+            }
+            if (look(0, -total) is null) return null;
+        }
+        return null;
     }
 
     AimRecoverResult Finish(AimRecoverResult r, int moves, AimShift? first, AimShift? last, double gx, double gy)
