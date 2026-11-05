@@ -19,6 +19,7 @@ public sealed partial class Fisher
     void MarkDecoy((int X, int Y)? pos)
     {
         if (pos is not { } p) return;
+        if (Now < viewUnsettledUntil) return;
         int cell = Math.Max(8, (int)(cfg.BobberDecoyCell * scale));
         decoyTracker.Mark(p.X, p.Y, (int)(cfg.BobberDecoyPad * scale), cell, Now);
         Log.Info($"確認クリックで空中だったため、({p.X}, {p.Y}) の候補をウキではないものとして除外します");

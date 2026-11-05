@@ -4,6 +4,7 @@ namespace Pocofarm.Core;
 public sealed partial class Config
 {
     [Desc("VRChat のウィンドウ名")] public string WindowTitle { get; set; } = "VRChat";
+    [Desc("釣りが要確認で止まったとき、Windows の通知(トースト)で知らせる")] public bool LocalNotify { get; set; } = true;
     [Desc("VRChat ウィンドウを探し直す間隔[秒]")] public double WindowRecheckInterval { get; set; } = 30.0;
     [Desc("画面キャプチャの fps", true)] public int CaptureFps { get; set; } = 60;
 

@@ -174,6 +174,8 @@ public sealed partial class Fisher
             dip = NewDip();
             lastPos = null;
             viewMotion.Reset();
+            // 画面の大きさが変わっている最中は、空中判定の除外登録を控え、変わるたびに除外済みの範囲も捨てる(途中の大きさで覚えた除外が後で本物のウキを隠すため)
+            if (lastAspect > 0) { viewUnsettledUntil = Now + ViewSettleSeconds; decoyTracker.Clear(); }
             // 縦横比が変わると同じ場面でも位置の比率が変わる。覚えた着水位置・他人のウキの位置は使えないので捨てて学び直す(ウィンドウをなめらかに広げ縮めしている間は毎回捨てるだけで害はない)
             double aspect = f.Width / (double)f.Height;
             if (lastAspect > 0 && Math.Abs(aspect / lastAspect - 1) > 0.04)

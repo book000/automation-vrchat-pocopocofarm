@@ -218,6 +218,7 @@ The environment the tool runs in.
 | `update_source` | string | (empty) |  | Path (UNC allowed) of a newer executable for auto-update. If it is newer than the running executable, the resident supervisor swaps to it. Edit `config.json` directly; this key cannot be changed through the dashboard. When empty, only a file named `pocofarm.new.exe` triggers a swap. |
 | `update_check_seconds` | number | `60` |  | Interval (seconds) at which `update_source` is checked. |
 | `archive_keep_days` | integer | 0 |  | Delete `data/archive/events_*.jsonl` older than this many days, at worker start and in `pocofarm cleanup`. 0 keeps them forever. |
+| `local_notify` | boolean | `true` |  | Show a Windows toast notification when fishing stops in the `needs_attention` state. At most one per 10 minutes. |
 | `exe_cleanup_interval` | number | `3600` |  | Interval (seconds) at which leftover executables from swaps (`*.old` and similar) are removed. 0 disables it. |
 
 ## Farm photos

@@ -40,6 +40,7 @@ public sealed partial class Fisher
         status.Set("needs_attention", reason);
         events.Write("needs_attention", ("reason", reason), ("miss_streak", recorder.MissStreak), ("cast_failures", castFailures));
         Log.Warn($"要確認: {reason}");
+        if (cfg.LocalNotify) DesktopNotice.Show("ポコファーム: 釣りが止まっています", reason);
         if (!dryRun) Notify.Toast("ぽこぽこファーム", reason);
     }
 
