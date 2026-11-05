@@ -33,7 +33,11 @@ public sealed partial class Fisher
     {
         var p = pendingDecoys; pendingDecoys = null;
         if (p is null || p.Width != f.Width || p.Height != f.Height || p.Cell != Math.Max(8, (int)(cfg.BobberDecoyCell * scale))) return;
-        decoyTracker.Import(p.Cells, p.Cell);
+        // 釣れた実績のある着水位置の近くの升目は本物のウキなので、引き継がない
+        var cells = LearnedLanding(f) is { } l
+            ? p.Cells.Where(c => Math.Abs((c[0] + 0.5) * p.Cell - l.X) > 2 * p.Cell || Math.Abs((c[1] + 0.5) * p.Cell - l.Y) > 2 * p.Cell).ToList()
+            : p.Cells;
+        decoyTracker.Import(cells, p.Cell);
         Log.Info($"前回の除外位置を {decoyTracker.Rects.Count} 升引き継ぎました");
     }
 
