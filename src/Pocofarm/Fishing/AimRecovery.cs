@@ -134,6 +134,7 @@ public sealed class AimRecovery
 
     const double SweepStep = 0.4;      // 1 回に振る量(画面の高さに対する比率)。基準の一部が画面に残る程度
     const int SweepSteps = 6;
+    const double SweepMinScore = 0.85;      // 振っている途中の偶然の似た場面(実測 0.65〜0.67)を拾わないよう、本物の一致(実測 0.95 以上)に近い高さを求める
 
     /// <summary>
     /// 基準の場面が画面に無いとき、下向き→上向きの順に縦へ振って場面を探す。見つかればその画面を返す。
@@ -150,7 +151,7 @@ public sealed class AimRecovery
                 if (stop() || look(0, dir * step) is not { } fr) return null;
                 total += dir * step;
                 var g = ViewAligner.ToGrey(fr);
-                if (ViewAligner.Estimate(rf, g, minScore) is not null) { Log.Info($"[aim] 縦に振って場面を見つけました(dy={total})"); return g; }
+                if (ViewAligner.Estimate(rf, g, Math.Max(minScore, SweepMinScore)) is not null) { Log.Info($"[aim] 縦に振って場面を見つけました(dy={total})"); return g; }
             }
             if (look(0, -total) is null) return null;
         }
