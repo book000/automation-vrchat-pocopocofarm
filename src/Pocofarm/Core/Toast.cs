@@ -63,10 +63,18 @@ public sealed record Toast(string Kind, string Text, string Fish = "", int? Exp 
     // 魚ごとの獲得経験値(実測)。名前の文字が読み違えられたとき(コイ→ロイ)に、経験値から魚を補うために使う
     static readonly Dictionary<string, int> FishExp = new() { ["フナ"] = 2, ["ドジョウ"] = 2, ["コイ"] = 4, ["ナマズ"] = 6, ["ニジマス"] = 8, ["金色のコイ"] = 30 };
 
-    /// <summary>知らない魚名のとき、同じ経験値の既知の魚が 1 種類ならその魚、複数なら名前が最も近い魚(0.3 以上)に寄せる。決められなければ読んだままにする。</summary>
-    static string FishByExp(string name, int exp, IReadOnlyList<string> known)
+    // 竿 Lv5(経験値 2.4 倍)での実測値。ニジマスとエビ、フナとドジョウは同じ値なので、名前の近さで決める
+    static readonly Dictionary<string, int> FishExpRod5 = new()
     {
-        var cands = known.Where(k => FishExp.TryGetValue(k, out var e) && e == exp).ToList();
+        ["フナ"] = 5, ["ドジョウ"] = 5, ["コイ"] = 10, ["ナマズ"] = 14, ["ニジマス"] = 19, ["エビ"] = 19, ["サケ"] = 24,
+        ["金色のコイ"] = 72, ["イトウ"] = 144, ["ヒラメ"] = 432, ["ブリ"] = 480, ["タイ"] = 528, ["マグロ"] = 600,
+    };
+
+    /// <summary>知らない魚名のとき、同じ経験値の既知の魚が 1 種類ならその魚、複数なら名前が最も近い魚(0.3 以上)に寄せる。決められなければ読んだままにする。</summary>
+    public static string FishByExp(string name, int exp, IReadOnlyList<string> known)
+    {
+        var cands = known.Where(k => FishExpRod5.TryGetValue(k, out var e) && e == exp).ToList();
+        if (cands.Count == 0) cands = known.Where(k => FishExp.TryGetValue(k, out var e) && e == exp).ToList();
         if (cands.Count == 1) return cands[0];
         var best = cands.Select(k => (k, r: SeqRatio(name, k))).Where(x => x.r >= 0.3).OrderByDescending(x => x.r).FirstOrDefault();
         return best.k ?? name;

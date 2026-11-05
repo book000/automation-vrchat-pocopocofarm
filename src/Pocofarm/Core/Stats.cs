@@ -51,7 +51,13 @@ public static partial class Stats
             if (e.Str("outcome") != "caught") continue;
             var fish = e.Str("fish");
             // OCR の読み違いで一覧にない名前になったものは、魚名が読めなかった扱いにして所持数の飛びから推定する
-            if (known is not null && fish.Length > 0 && !known.Contains(fish)) { e["fish"] = ""; fish = ""; }
+            if (known is not null && fish.Length > 0 && !known.Contains(fish))
+            {
+                // 経験値が読めていれば、所持数の飛びより先に名前と経験値から決める(エビ→「工ビ」など)
+                var byExp = e.Num("exp") is { } xp ? Toast.FishByExp(fish, (int)xp, known.ToList()) : fish;
+                if (known.Contains(byExp)) { e["fish"] = byExp; e["fish_inferred"] = true; fish = byExp; }
+                else { e["fish"] = ""; fish = ""; }
+            }
             if (fish.Length == 0) { pending.Enqueue(e); continue; }
             if (e.Num("count") is not { } c) continue;
             if (inv.TryGetValue(fish, out var prev) && c - prev >= 2 && pending.Count > 0)

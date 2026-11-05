@@ -21,6 +21,34 @@ public class CoreTests
         }
     }
 
+    [Theory]
+    [InlineData("工ビ", 19, "エビ")]
+    [InlineData("ェビ", 19, "エビ")]
+    [InlineData("(月ェビ", 19, "エビ")]
+    [InlineData("ツマス", 19, "ニジマス")]
+    [InlineData("ュイ", 10, "コイ")]
+    [InlineData("ブナ", 5, "フナ")]
+    [InlineData("(-ジ,ウ", 5, "ドジョウ")]
+    [InlineData("ズ", 14, "ナマズ")]
+    [InlineData("プリ", 480, "ブリ")]
+    public void FishByExp_ResolvesGarbledNamesFromRod5Exp(string raw, int exp, string expected)
+    {
+        Assert.Equal(expected, Toast.FishByExp(raw, exp, new Config().KnownFish));
+    }
+
+    [Fact]
+    public void InferMissingFish_ResolvesGarbledNameByExpBeforeInventoryJump()
+    {
+        var rows = new List<JsonObject>
+        {
+            new() { ["outcome"] = "caught", ["fish"] = "フナ", ["count"] = 1, ["exp"] = 5 },
+            new() { ["outcome"] = "caught", ["fish"] = "工ビ", ["count"] = 1, ["exp"] = 19 },
+            new() { ["outcome"] = "caught", ["fish"] = "フナ", ["count"] = 3, ["exp"] = 5 },
+        };
+        Stats.InferMissingFish(rows, new Config().KnownFish);
+        Assert.Equal("エビ", rows[1]["fish"]!.GetValue<string>());
+    }
+
     [Fact]
     public void Classify_CaughtWithOcrNoise()
     {
