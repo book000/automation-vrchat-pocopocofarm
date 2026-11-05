@@ -141,11 +141,12 @@ public sealed partial class Fisher
                         events.Write("lost_dip", ("accepted", false), ("trace", TraceTail(cfg.LostDipGuardFrames)));
                     if (ev == "dip")
                     {
+                        pecks++;
+                        // 記録(同期のファイル書き込み)は引くクリックの後ろへ回す。間に挟むと逃げられる確率が上がる反応遅延の裾になる
+                        if (pecks >= tuner.PecksToReel) DoReel(now, f, $"沈み{pecks}回目で引く");
                         // ウキを見失っただけの沈み(早引きの原因になりうる)は、直前の見え方を後から調べられるよう残す
                         if (b is null) events.Write("lost_dip", ("accepted", true), ("trace", TraceTail(cfg.LostDipGuardFrames)));
-                        pecks++;
                         Log.Info($"沈み検出 #{pecks} (y={(b is null ? "lost" : b.Y.ToString())})");
-                        if (pecks >= tuner.PecksToReel) DoReel(now, f, $"沈み{pecks}回目で引く");
                     }
                     else if (now - tArmed > (castVerified ? tuner.BiteTimeout() : unverifiedWait)) NoBite(now, f);
                     break;
