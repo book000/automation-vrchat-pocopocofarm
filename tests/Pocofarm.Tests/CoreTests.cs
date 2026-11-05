@@ -49,6 +49,19 @@ public class CoreTests
         Assert.Equal("エビ", rows[1]["fish"]!.GetValue<string>());
     }
 
+    [Theory]
+    [InlineData("エビ", 9, "エビ", 19)]
+    [InlineData("イトウ", 44, "イトウ", 144)]
+    [InlineData("ナマズ", 4, "ナマズ", 14)]
+    [InlineData("ドジョウ", 55, "ドジョウ", 5)]
+    [InlineData("コイ", 72, "金色のコイ", 72)]
+    [InlineData("フナ", 5, "フナ", 5)]
+    public void Classify_ReconcilesFishAndExp(string fish, int readExp, string wantFish, int wantExp)
+    {
+        var t = Toast.Classify($"{fish}が釣れた!+{readExp}経験値(持っている3匹)", new Config().KnownFish)!;
+        Assert.Equal((wantFish, wantExp), (t.Fish, t.Exp));
+    }
+
     [Fact]
     public void Classify_CaughtWithOcrNoise()
     {

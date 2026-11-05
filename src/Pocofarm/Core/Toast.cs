@@ -43,6 +43,7 @@ public sealed record Toast(string Kind, string Text, string Fish = "", int? Exp 
         var cnt = CountRe.Match(t);
         int? expValue = exp.Success ? ParseInt(exp.Groups[1].Value) : null;
         if (fish.Length > 0 && knownFish is { Count: > 0 } && !knownFish.Contains(fish) && expValue is { } ev) fish = FishByExp(fish, ev, knownFish);
+        if (fish.Length > 0 && knownFish is { Count: > 0 } && expValue is { } rv) (fish, expValue) = Reconcile(fish, rv, knownFish);
         return new(Caught, t, fish, expValue, cnt.Success ? ParseInt(cnt.Groups[1].Value) : null, t.Contains("釣れ") && exp.Success);
     }
 
@@ -78,6 +79,24 @@ public sealed record Toast(string Kind, string Text, string Fish = "", int? Exp 
         if (cands.Count == 1) return cands[0];
         var best = cands.Select(k => (k, r: SeqRatio(name, k))).Where(x => x.r >= 0.3).OrderByDescending(x => x.r).FirstOrDefault();
         return best.k ?? name;
+    }
+
+    /// <summary>魚名と経験値が食い違うとき、桁の読み落とし・読み過ぎ(19→9, 5→55)は表の値に直し、名前が別の魚の末尾(コイ→金色のコイ)で経験値がその魚と一致するならその魚にする。</summary>
+    static (string Fish, int Exp) Reconcile(string fish, int exp, IReadOnlyList<string> known)
+    {
+        if (!FishExpRod5.TryGetValue(fish, out var want) || exp == want) return (fish, exp);
+        var other = known.FirstOrDefault(k => k != fish && k.EndsWith(fish, StringComparison.Ordinal) && FishExpRod5.TryGetValue(k, out var e) && e == exp);
+        if (other is not null) return (other, exp);
+        return OneEdit(exp.ToString(System.Globalization.CultureInfo.InvariantCulture), want.ToString(System.Globalization.CultureInfo.InvariantCulture)) ? (fish, want) : (fish, exp);
+    }
+
+    /// <summary>2 つの数字列が 1 文字の欠け・余りだけで一致するか。</summary>
+    static bool OneEdit(string a, string b)
+    {
+        if (Math.Abs(a.Length - b.Length) != 1) return false;
+        var (s, l) = a.Length <= b.Length ? (a, b) : (b, a);
+        for (int i = 0; i < l.Length; i++) if (l.Remove(i, 1) == s) return true;
+        return false;
     }
 
     /// <summary>装飾ノイズを除き、既知の魚名に近ければ寄せる(ドドジョウ→ドジョウ)。</summary>
