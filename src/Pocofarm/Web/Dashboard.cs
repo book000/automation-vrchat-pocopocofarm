@@ -199,8 +199,18 @@ public sealed partial class Dashboard(Paths paths, Config cfg) : IFishingControl
         double now = EventLog.Now();
         // 書き込みと読み込みが重なったときに一瞬だけ読めないことがある。「停止」と誤表示しないよう直前の内容を使う
         JsonObject status = lastStatus;
-        try { status = lastStatus = JsonNode.Parse(File.ReadAllText(paths.Status)) as JsonObject ?? []; }
-        catch (Exception ex) when (ex is IOException or JsonException) { }
+        try
+        {
+            // 書き込み側と共有で開く(既定の ReadAllText は書き込み中のファイルを開けず、その間「停止」に見えてしまう)
+            using var fs = new FileStream(paths.Status, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete);
+            status = lastStatus = JsonNode.Parse(fs) as JsonObject ?? [];
+        }
+        catch (Exception ex) when (ex is IOException or JsonException)
+        {
+            // 読めなかったときは直前の内容を使い、心拍だけファイルの更新時刻で補う(書き込みが続いていれば「停止」にしない)
+            try { lastStatus["heartbeat"] = Math.Max(lastStatus.Num("heartbeat") ?? 0, new DateTimeOffset(File.GetLastWriteTimeUtc(paths.Status)).ToUnixTimeMilliseconds() / 1000.0); }
+            catch (IOException) { }
+        }
         var attempts = events.Where(e => e.Str("type") == "attempt").ToList();
         Stats.InferMissingFish(attempts, cfg.KnownFish);
         double T(JsonObject e) => e.Num("_t") ?? 0;
