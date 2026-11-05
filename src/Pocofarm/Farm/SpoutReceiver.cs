@@ -88,8 +88,14 @@ public sealed class SpoutReceiver : IDisposable
                 staging?.Dispose();
                 staging = device!.CreateTexture2D(new Texture2DDescription
                 {
-                    Width = desc.Width, Height = desc.Height, MipLevels = 1, ArraySize = 1, Format = desc.Format,
-                    SampleDescription = new SampleDescription(1, 0), Usage = ResourceUsage.Staging, CPUAccessFlags = CpuAccessFlags.Read,
+                    Width = desc.Width,
+                    Height = desc.Height,
+                    MipLevels = 1,
+                    ArraySize = 1,
+                    Format = desc.Format,
+                    SampleDescription = new SampleDescription(1, 0),
+                    Usage = ResourceUsage.Staging,
+                    CPUAccessFlags = CpuAccessFlags.Read,
                 });
             }
             context!.CopyResource(staging, shared);

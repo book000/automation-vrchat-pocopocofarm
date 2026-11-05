@@ -17,7 +17,10 @@ public static class Notify
         {
             using var p = Process.Start(new ProcessStartInfo("powershell", ["-NoProfile", "-NonInteractive", "-Command", script])
             {
-                CreateNoWindow = true, UseShellExecute = false, RedirectStandardOutput = true, RedirectStandardError = true,
+                CreateNoWindow = true,
+                UseShellExecute = false,
+                RedirectStandardOutput = true,
+                RedirectStandardError = true,
             });
         }
         catch (Exception ex) { Log.Warn($"トースト通知に失敗: {ex.Message}"); }

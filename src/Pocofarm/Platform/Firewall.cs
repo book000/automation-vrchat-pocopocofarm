@@ -19,7 +19,10 @@ public static class Firewall
     {
         using var p = Process.Start(new ProcessStartInfo("netsh", args)
         {
-            UseShellExecute = false, CreateNoWindow = true, RedirectStandardOutput = true, StandardOutputEncoding = CodePagesEncodingProvider.Instance.GetEncoding(932) ?? Encoding.UTF8,
+            UseShellExecute = false,
+            CreateNoWindow = true,
+            RedirectStandardOutput = true,
+            StandardOutputEncoding = CodePagesEncodingProvider.Instance.GetEncoding(932) ?? Encoding.UTF8,
         })!;
         var o = p.StandardOutput.ReadToEnd();
         p.WaitForExit();

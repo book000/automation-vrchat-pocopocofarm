@@ -85,22 +85,35 @@ public static partial class Stats
         var lastScan = scans.LastOrDefault(e => (e.Num("plots") ?? 0) > 0);      // 畑が見つからなかった撮影は状態として使わない
         object? farm = lastScan is null ? null : new Dictionary<string, object?>
         {
-            ["scans"] = scans.Count, ["last_t"] = Tm(lastScan), ["plots"] = lastScan.Num("plots"), ["unplanted"] = lastScan.Num("unplanted"),
-            ["dry"] = lastScan.Num("dry"), ["done"] = lastScan.Num("done"), ["hidden"] = lastScan.Num("hidden"),
+            ["scans"] = scans.Count,
+            ["last_t"] = Tm(lastScan),
+            ["plots"] = lastScan.Num("plots"),
+            ["unplanted"] = lastScan.Num("unplanted"),
+            ["dry"] = lastScan.Num("dry"),
+            ["done"] = lastScan.Num("done"),
+            ["hidden"] = lastScan.Num("hidden"),
         };
 
         return new()
         {
-            ["from"] = from, ["to"] = to,
-            ["attempts"] = cur.Attempts, ["caught"] = cur.Caught, ["success_rate"] = cur.Rate,
+            ["from"] = from,
+            ["to"] = to,
+            ["attempts"] = cur.Attempts,
+            ["caught"] = cur.Caught,
+            ["success_rate"] = cur.Rate,
             ["prev"] = new Dictionary<string, object?> { ["attempts"] = prev.Attempts, ["caught"] = prev.Caught, ["success_rate"] = prev.Rate },
             ["success_delta"] = cur.Rate is { } a && prev.Rate is { } b ? R1(a - b) : null,
             ["exp"] = (int)caught.Sum(e => e.Num("exp") ?? 0),
-            ["coins_est"] = caught.Sum(e => price.GetValueOrDefault(e.Str("fish"))), ["coins_note"] = CoinsNote,
-            ["level"] = level, ["top_fish"] = topFish, ["rare"] = rare,
+            ["coins_est"] = caught.Sum(e => price.GetValueOrDefault(e.Str("fish"))),
+            ["coins_note"] = CoinsNote,
+            ["level"] = level,
+            ["top_fish"] = topFish,
+            ["rare"] = rare,
             ["downtime"] = new Dictionary<string, object?>
             {
-                ["paused_s"] = (int)Math.Round(paused), ["offline_s"] = (int)Math.Round(offline), ["capture_gap_s"] = (int)Math.Round(gaps),
+                ["paused_s"] = (int)Math.Round(paused),
+                ["offline_s"] = (int)Math.Round(offline),
+                ["capture_gap_s"] = (int)Math.Round(gaps),
                 ["restarts"] = evs.Count(e => e.Str("type") == "session_start" && Tm(e) >= from && Tm(e) < to),
             },
             ["farm"] = farm,
@@ -149,7 +162,8 @@ public static partial class Stats
                 double remain = (1 - (last.V - last.Lv)) * pl;
                 eta = new Dictionary<string, object?>
                 {
-                    ["next_level"] = last.Lv + 1, ["hours"] = R1(remain / rate),
+                    ["next_level"] = last.Lv + 1,
+                    ["hours"] = R1(remain / rate),
                     ["goal"] = goal > last.Lv ? goal : null,
                     ["goal_hours"] = goal > last.Lv ? R1((remain + (goal - last.Lv - 1) * pl) / rate) : null,
                 };
@@ -167,14 +181,25 @@ public static partial class Stats
             int exp = (int)cs.Sum(e => e.Num("exp") ?? 0), c = cs.Sum(e => price.GetValueOrDefault(e.Str("fish")));
             daily.Add(new()
             {
-                ["day"] = day.ToString("yyyy-MM-dd"), ["caught"] = cs.Count, ["exp"] = exp, ["coins_est"] = c, ["active_h"] = R1(act),
-                ["exp_per_h"] = act > 0 ? R1(exp / act) : null, ["coins_per_h"] = act > 0 ? R1(c / act) : null,
+                ["day"] = day.ToString("yyyy-MM-dd"),
+                ["caught"] = cs.Count,
+                ["exp"] = exp,
+                ["coins_est"] = c,
+                ["active_h"] = R1(act),
+                ["exp_per_h"] = act > 0 ? R1(exp / act) : null,
+                ["coins_per_h"] = act > 0 ? R1(c / act) : null,
             });
         }
         return new()
         {
-            ["level"] = level, ["exp_per_level"] = perLevel, ["exp_per_level_source"] = source, ["level_up_samples"] = samples.Select(R1).ToList(),
-            ["exp_per_hour"] = expPerHour, ["eta"] = eta, ["daily"] = daily, ["coins_note"] = CoinsNote,
+            ["level"] = level,
+            ["exp_per_level"] = perLevel,
+            ["exp_per_level_source"] = source,
+            ["level_up_samples"] = samples.Select(R1).ToList(),
+            ["exp_per_hour"] = expPerHour,
+            ["eta"] = eta,
+            ["daily"] = daily,
+            ["coins_note"] = CoinsNote,
         };
     }
 }

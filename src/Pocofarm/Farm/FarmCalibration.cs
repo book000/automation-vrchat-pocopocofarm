@@ -85,7 +85,7 @@ public static class FarmCalibration
         var jac = new double[3, 3];
         for (int c = 0; c < 3; c++)
             if (!await ProbeAsync(cur, f0, Axes[c], StepOf(Axes[c], cp), measure, jac, c)) return (cur, f0);
-        Log.Info($"画角調整: 変化の測定 {jac[0,0]:F3} {jac[0,1]:F3} {jac[0,2]:F3} / {jac[1,0]:F3} {jac[1,1]:F3} {jac[1,2]:F3} / {jac[2,0]:F3} {jac[2,1]:F3} {jac[2,2]:F3}");
+        Log.Info($"画角調整: 変化の測定 {jac[0, 0]:F3} {jac[0, 1]:F3} {jac[0, 2]:F3} / {jac[1, 0]:F3} {jac[1, 1]:F3} {jac[1, 2]:F3} / {jac[2, 0]:F3} {jac[2, 1]:F3} {jac[2, 2]:F3}");
         if (Solve3(jac, [1, 1, 1]) is null) return (cur, f0);
 
         var best = (Pose: (float[])cur.Clone(), Fit: f0);

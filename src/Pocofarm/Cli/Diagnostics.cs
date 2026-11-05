@@ -45,11 +45,11 @@ public static class Diagnostics
         Console.WriteLine("toast ocr: " + new WinOcr().Read(crop));
         var scale = f.Height / (double)BobberDetector.RefHeight;
         var br = rois.Bobber;
-        
+
         var sw = System.Diagnostics.Stopwatch.StartNew();
         Bobber? b = null;
         int rx = (int)(br[0] * f.Width), ry = (int)(br[1] * f.Height);
-        var ex = rois.Exclude.Select(e => ((int)(e[0] * f.Width) , (int)(e[1] * f.Height), (int)(e[2] * f.Width), (int)(e[3] * f.Height))).ToList();
+        var ex = rois.Exclude.Select(e => ((int)(e[0] * f.Width), (int)(e[1] * f.Height), (int)(e[2] * f.Width), (int)(e[3] * f.Height))).ToList();
         for (int i = 0; i < 20; i++) b = BobberDetector.Detect(f, region: (rx, ry, (int)(br[2] * f.Width), (int)(br[3] * f.Height)), exclude: ex, scale: scale);
         Console.WriteLine($"bobber(roi)={b} offset=({(int)(br[0] * f.Width)},{(int)(br[1] * f.Height)}) {sw.ElapsedMilliseconds / 20.0:F1}ms/detect");
         if (args.Length > 1) Imaging.SavePng(f, args[1]);

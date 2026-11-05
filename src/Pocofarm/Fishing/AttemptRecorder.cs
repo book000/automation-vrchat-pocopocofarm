@@ -35,8 +35,14 @@ public sealed class AttemptRecorder(Config cfg, EventLog events, Status status, 
         if (outcome == "caught") LastCaughtAt = Now;
         var fields = new Dictionary<string, object?>
         {
-            ["attempt"] = aid, ["outcome"] = outcome, ["note"] = note, ["fish"] = toast?.Fish ?? "",
-            ["exp"] = toast?.Exp, ["count"] = toast?.Count, ["ocr"] = toast?.Text ?? "", ["pecks"] = a?.Pecks ?? pecksSeen,
+            ["attempt"] = aid,
+            ["outcome"] = outcome,
+            ["note"] = note,
+            ["fish"] = toast?.Fish ?? "",
+            ["exp"] = toast?.Exp,
+            ["count"] = toast?.Count,
+            ["ocr"] = toast?.Text ?? "",
+            ["pecks"] = a?.Pecks ?? pecksSeen,
             ["reaction_ms"] = a is null ? null : (int)Math.Round((a.TClick - a.TDip) * 1000),
             ["result_ms"] = a?.FirstSeen is { } fs ? (int)Math.Round((fs - a.TClick) * 1000) : null,
             ["engine"] = a?.Engine ?? "",

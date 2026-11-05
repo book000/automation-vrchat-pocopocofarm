@@ -17,7 +17,10 @@ public sealed class Status(string path)
     /// <summary>現在の状態。Fisher からの読み出しは Get を使う。</summary>
     public Dictionary<string, object?> Data { get; } = new()
     {
-        ["pid"] = Environment.ProcessId, ["started"] = EventLog.Now(), ["state"] = "starting", ["message"] = "",
+        ["pid"] = Environment.ProcessId,
+        ["started"] = EventLog.Now(),
+        ["state"] = "starting",
+        ["message"] = "",
     };
 
     /// <summary>値を更新する。</summary>

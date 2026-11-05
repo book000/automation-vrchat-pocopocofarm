@@ -21,7 +21,10 @@ public static partial class Stats
 
     static Dictionary<string, object?> Dist(List<double> v) => new()
     {
-        ["n"] = v.Count, ["p50"] = Percentile(v, 50), ["p95"] = Percentile(v, 95), ["max"] = v.Count > 0 ? R1(v.Max()) : null,
+        ["n"] = v.Count,
+        ["p50"] = Percentile(v, 50),
+        ["p95"] = Percentile(v, 95),
+        ["max"] = v.Count > 0 ? R1(v.Max()) : null,
     };
 
     /// <summary>当たりまでの待ち分布。1 秒刻みで実測の最大値までだけ並べ、30 秒を超えた分は末尾にまとめる(空の区間で画面を埋めない)。</summary>
@@ -85,8 +88,12 @@ public static partial class Stats
             int caught = g.Value.Count(e => e.Str("outcome") == "caught");
             return new Dictionary<string, object?>
             {
-                ["x"] = g.Key.Item1, ["y"] = g.Key.Item2, ["w"] = Percentile(widths, 50), ["n"] = g.Value.Count,
-                ["caught"] = caught, ["rate"] = R1(caught * 100.0 / g.Value.Count),
+                ["x"] = g.Key.Item1,
+                ["y"] = g.Key.Item2,
+                ["w"] = Percentile(widths, 50),
+                ["n"] = g.Value.Count,
+                ["caught"] = caught,
+                ["rate"] = R1(caught * 100.0 / g.Value.Count),
             };
         }).OrderByDescending(r => (int)r["n"]!).Take(8).ToList();
     }
@@ -126,7 +133,11 @@ public static partial class Stats
             var (lo, hi) = Wilson(kv.Value, n);
             return new Dictionary<string, object?>
             {
-                ["fish"] = kv.Key, ["p"] = R1((double)kv.Value / n * 100), ["lo"] = R1(lo * 100), ["hi"] = R1(hi * 100), ["n"] = kv.Value,
+                ["fish"] = kv.Key,
+                ["p"] = R1((double)kv.Value / n * 100),
+                ["lo"] = R1(lo * 100),
+                ["hi"] = R1(hi * 100),
+                ["n"] = kv.Value,
             };
         }).ToList();
         var rare = probs.Count > 0 ? probs.MinBy(r => (double)r["p"]!) : null;
@@ -142,7 +153,10 @@ public static partial class Stats
         }
         return new()
         {
-            ["n"] = n, ["probs"] = probs, ["chi2"] = R1(chi), ["df"] = df,
+            ["n"] = n,
+            ["probs"] = probs,
+            ["chi2"] = R1(chi),
+            ["df"] = df,
             // 自由度 df のカイ二乗が平均+2σ(df+2√(2df))以内なら「前の魚に依存しない」と見なす
             ["independent"] = df == 0 || chi <= df + 2 * Math.Sqrt(2.0 * df),
             ["expected_coins"] = n > 0 ? R1(probs.Sum(r => (int)r["n"]! / (double)n * coins.GetValueOrDefault((string)r["fish"]!))) : null,
@@ -175,8 +189,12 @@ public static partial class Stats
         int CoinOf(IEnumerable<JsonObject> es) => es.Sum(e => PriceOf(e.Str("fish")));   // 魚種不明は0コイン
         var fish = fishN.Select(x => new Dictionary<string, object?>
         {
-            ["fish"] = x.Fish, ["n"] = x.N, ["share"] = R1(x.N * 100.0 / caughtAll.Count), ["every"] = R1((double)caughtAll.Count / x.N),
-            ["price"] = price.TryGetValue(x.Fish, out var p) ? p : null, ["coins"] = x.N * PriceOf(x.Fish),
+            ["fish"] = x.Fish,
+            ["n"] = x.N,
+            ["share"] = R1(x.N * 100.0 / caughtAll.Count),
+            ["every"] = R1((double)caughtAll.Count / x.N),
+            ["price"] = price.TryGetValue(x.Fish, out var p) ? p : null,
+            ["coins"] = x.N * PriceOf(x.Fish),
         }).ToList();
         var waits = real.Select(e => e.Num("wait_s")).Where(w => w is not null).Select(w => w!.Value).ToList();
         List<double> Col(string k) => real.Select(e => e.Num(k)).Where(v => v is not null).Select(v => v!.Value).ToList();
@@ -197,7 +215,8 @@ public static partial class Stats
             ["coins_per_catch"] = caughtAll.Count > 0 ? R1((double)total / caughtAll.Count) : null,
             ["exp_per_hour"] = (int)hourCaught.Sum(e => e.Num("exp") ?? 0),
             ["cycle_s"] = Percentile(gaps, 50),
-            ["fish"] = fish, ["fish_inferred"] = caughtAll.Count(e => e["fish_inferred"] is not null),
+            ["fish"] = fish,
+            ["fish_inferred"] = caughtAll.Count(e => e["fish_inferred"] is not null),
             ["inventory"] = inventory,
             ["engines"] = real.Select(e => e.Str("engine")).Where(s => s.Length > 0).GroupBy(s => s).ToDictionary(g => g.Key, g => g.Count()),
             ["places"] = Places(attempts),

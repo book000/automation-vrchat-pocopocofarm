@@ -61,7 +61,10 @@ public sealed partial class Fisher
         attempt = new Attempt(events.NextAttempt(), now, tClick, pos, pecks)
         {
             Trace = trace.TakeLast(cfg.AttemptTraceLength).Select(x => new[] { Math.Round(x.T, 2), x.Y, (double)x.W }).ToList(),
-            FrameClick = FramePool.RentCopy(f), TArmed = tArmed, BaseW = dip.BaseW, TCast = lastCastClickAt,
+            FrameClick = FramePool.RentCopy(f),
+            TArmed = tArmed,
+            BaseW = dip.BaseW,
+            TCast = lastCastClickAt,
         };
         SetState(FishState.ResultWait, why);
     }
@@ -70,83 +73,83 @@ public sealed partial class Fisher
         switch (state)
         {
             case FishState.Cooldown:
-            {
-                control.SafePoint();      // 結果の確定後などで、予約された一時停止があればここで止める
-                double wait = recorder.SessionAttempts > 0 ? cfg.RecastDelay : 0.5;
-                // ゲームは直前の引き(釣果)から約 1.8 秒は投げを受け付けない。結果の確定が早いと RecastDelay だけでは足りないので、引きクリックからも数える
-                if (fresh && ++learnTick % 8 == 0) LearnDecoys(f, b);
-                if (AimRecoverDue && TryAimRecover(f)) break;      // 連続失敗の原因が視点のずれなら、通知より先に自分で直す
-                if (now - tState >= wait && now - lastReelAt >= tuner.ReelToCast && now - recorder.LastCaughtAt >= cfg.AfterCatchCastMin && !StartupProbe(now, b)) StartCast(now, b);
-                break;
-            }
-            case FishState.CastWait:
-            {
-                if (b is not null) castLastSeen = now;
-                if (b is not null && !startupAdopt && fresh)
                 {
-                    if (castOrigin is null) castOrigin = (b.X, b.Y);      // 投げ後に最初に見えた位置を起点にする
-                    else if (!castMoved && Math.Abs(b.X - castOrigin.Value.X) + Math.Abs(b.Y - castOrigin.Value.Y) > cfg.CastMovedPx * scale) castMoved = true;
+                    control.SafePoint();      // 結果の確定後などで、予約された一時停止があればここで止める
+                    double wait = recorder.SessionAttempts > 0 ? cfg.RecastDelay : 0.5;
+                    // ゲームは直前の引き(釣果)から約 1.8 秒は投げを受け付けない。結果の確定が早いと RecastDelay だけでは足りないので、引きクリックからも数える
+                    if (fresh && ++learnTick % 8 == 0) LearnDecoys(f, b);
+                    if (AimRecoverDue && TryAimRecover(f)) break;      // 連続失敗の原因が視点のずれなら、通知より先に自分で直す
+                    if (now - tState >= wait && now - lastReelAt >= tuner.ReelToCast && now - recorder.LastCaughtAt >= cfg.AfterCatchCastMin && !StartupProbe(now, b)) StartCast(now, b);
+                    break;
                 }
-                dip.Anchored = b is not null && anchorPos is { } ap && Math.Abs(b.X - ap.X) <= cfg.BobberNearPx * scale * 2 && Math.Abs(b.Y - ap.Y) <= cfg.BobberNearPx * scale * 2;
-                if (fresh || b is null) dip.Update(now, b);
-                // 低 fps だと最初に見えた時点で着水済みで動きを観測できないので、投げから一定時間たった静止も着水とみなす(未確認扱いで当たり待ちに入る)
-                // 静止の基準位置と今のウキ位置が大きくずれているのは、別の候補(手・他人のウキ)で静止を判定してしまったとき。そのまま当たり待ちに入ると、本物の出現が「沈み」になって早引きする
-                if (dip.Armed && b is not null && Math.Abs(b.Y - dip.BaseY) > cfg.BobberNearPx * scale) { Log.Info($"静止の基準 y={dip.BaseY:F0} と現在位置 y={b.Y} がずれているので静止判定をやり直します"); dip = NewDip(); }
-                if (dip.Armed && (castMoved || startupAdopt || now - tState > cfg.CastSettleFallback))
+            case FishState.CastWait:
                 {
-                    // 竿先にぶら下がったウキは着水していない。投げのクリックが効かなかったので撮り直して投げ直す
-                    // 投げる前のウキ位置から動かないまま静止したなら、投げが効いていない(幅は視点で変わるので使わない)
-                    bool stayedAtTip = !castMoved && !startupAdopt && b is not null && castFrom is { } cf
-                        && Math.Abs(b.X - cf.X) <= cfg.BobberNearPx * scale && Math.Abs(b.Y - cf.Y) <= cfg.BobberNearPx * scale;
-                    if (stayedAtTip)
+                    if (b is not null) castLastSeen = now;
+                    if (b is not null && !startupAdopt && fresh)
                     {
-                        Log.Warn($"ウキが竿先に残っています(幅={dip.BaseW:F0})。投げが不発だったので投げ直します");
-                        castFailures++;
-                        if (castDt >= 0) { Log.Info($"[castlock] dt={castDt:F2} fail"); tuner.OnCastFailed(castDt); castDt = -1; }
-                        RecordAttempt("cast_failed", null, f, null, $"投げが不発(ウキが竿先に残った・連続{castFailures}回)");
-                        SetState(FishState.Cooldown, "cast_failed");
-                        dip = NewDip();
-                        // 待ち時間では直らない連続の不発(視線のずれなど)は、間隔を空けて、気づけるよう通知する
-                        if (castFailures >= cfg.CastFailAlertCount)
+                        if (castOrigin is null) castOrigin = (b.X, b.Y);      // 投げ後に最初に見えた位置を起点にする
+                        else if (!castMoved && Math.Abs(b.X - castOrigin.Value.X) + Math.Abs(b.Y - castOrigin.Value.Y) > cfg.CastMovedPx * scale) castMoved = true;
+                    }
+                    dip.Anchored = b is not null && anchorPos is { } ap && Math.Abs(b.X - ap.X) <= cfg.BobberNearPx * scale * 2 && Math.Abs(b.Y - ap.Y) <= cfg.BobberNearPx * scale * 2;
+                    if (fresh || b is null) dip.Update(now, b);
+                    // 低 fps だと最初に見えた時点で着水済みで動きを観測できないので、投げから一定時間たった静止も着水とみなす(未確認扱いで当たり待ちに入る)
+                    // 静止の基準位置と今のウキ位置が大きくずれているのは、別の候補(手・他人のウキ)で静止を判定してしまったとき。そのまま当たり待ちに入ると、本物の出現が「沈み」になって早引きする
+                    if (dip.Armed && b is not null && Math.Abs(b.Y - dip.BaseY) > cfg.BobberNearPx * scale) { Log.Info($"静止の基準 y={dip.BaseY:F0} と現在位置 y={b.Y} がずれているので静止判定をやり直します"); dip = NewDip(); }
+                    if (dip.Armed && (castMoved || startupAdopt || now - tState > cfg.CastSettleFallback))
+                    {
+                        // 竿先にぶら下がったウキは着水していない。投げのクリックが効かなかったので撮り直して投げ直す
+                        // 投げる前のウキ位置から動かないまま静止したなら、投げが効いていない(幅は視点で変わるので使わない)
+                        bool stayedAtTip = !castMoved && !startupAdopt && b is not null && castFrom is { } cf
+                            && Math.Abs(b.X - cf.X) <= cfg.BobberNearPx * scale && Math.Abs(b.Y - cf.Y) <= cfg.BobberNearPx * scale;
+                        if (stayedAtTip)
                         {
-                            status.Set("message", "投げが池に届いていません。視線を池に向けてください");
-                            tState = Now + CastFailBackoff();
-                            AlertCastFailures();
+                            Log.Warn($"ウキが竿先に残っています(幅={dip.BaseW:F0})。投げが不発だったので投げ直します");
+                            castFailures++;
+                            if (castDt >= 0) { Log.Info($"[castlock] dt={castDt:F2} fail"); tuner.OnCastFailed(castDt); castDt = -1; }
+                            RecordAttempt("cast_failed", null, f, null, $"投げが不発(ウキが竿先に残った・連続{castFailures}回)");
+                            SetState(FishState.Cooldown, "cast_failed");
+                            dip = NewDip();
+                            // 待ち時間では直らない連続の不発(視線のずれなど)は、間隔を空けて、気づけるよう通知する
+                            if (castFailures >= cfg.CastFailAlertCount)
+                            {
+                                status.Set("message", "投げが池に届いていません。視線を池に向けてください");
+                                tState = Now + CastFailBackoff();
+                                AlertCastFailures();
+                            }
+                            EscalateCastFailures();
+                            return;
                         }
-                        EscalateCastFailures();
+                        OnArmed(now);
                         return;
                     }
-                    OnArmed(now);
-                    return;
+                    if (expectAway is { } ea && b is not null && !startupAdopt && now - tState > cfg.ReelIneffectiveSeconds
+                        && Math.Abs(b.X - ea.X) < cfg.BobberNearPx * scale && Math.Abs(b.Y - ea.Y) < cfg.BobberNearPx * scale)
+                    {
+                        Log.Warn("ウキが引く前の位置から動かない。引けていなかったので当たり待ちへ戻る");
+                        events.Write("desync", ("note", "reel_ineffective_inplace"), ("pos", new[] { ea.X, ea.Y }));
+                        expectAway = null; startupAdopt = true;
+                        return;
+                    }
+                    if (now - tState > cfg.CastTimeout || (!startupAdopt && now - castLastSeen > cfg.CastLostSeconds)) CastFailed(f);
+                    break;
                 }
-                if (expectAway is { } ea && b is not null && !startupAdopt && now - tState > cfg.ReelIneffectiveSeconds
-                    && Math.Abs(b.X - ea.X) < cfg.BobberNearPx * scale && Math.Abs(b.Y - ea.Y) < cfg.BobberNearPx * scale)
-                {
-                    Log.Warn("ウキが引く前の位置から動かない。引けていなかったので当たり待ちへ戻る");
-                    events.Write("desync", ("note", "reel_ineffective_inplace"), ("pos", new[] { ea.X, ea.Y }));
-                    expectAway = null; startupAdopt = true;
-                    return;
-                }
-                if (now - tState > cfg.CastTimeout || (!startupAdopt && now - castLastSeen > cfg.CastLostSeconds)) CastFailed(f);
-                break;
-            }
             case FishState.WaitBite:
-            {
-                int suppressed = dip.SuppressedLost;
-                var ev = fresh || b is null ? dip.Update(now, b) : null;
-                if (dip.SuppressedLost != suppressed)
-                    events.Write("lost_dip", ("accepted", false), ("trace", TraceTail(cfg.LostDipGuardFrames)));
-                if (ev == "dip")
                 {
-                    // ウキを見失っただけの沈み(早引きの原因になりうる)は、直前の見え方を後から調べられるよう残す
-                    if (b is null) events.Write("lost_dip", ("accepted", true), ("trace", TraceTail(cfg.LostDipGuardFrames)));
-                    pecks++;
-                    Log.Info($"沈み検出 #{pecks} (y={(b is null ? "lost" : b.Y.ToString())})");
-                    if (pecks >= tuner.PecksToReel) DoReel(now, f, $"沈み{pecks}回目で引く");
+                    int suppressed = dip.SuppressedLost;
+                    var ev = fresh || b is null ? dip.Update(now, b) : null;
+                    if (dip.SuppressedLost != suppressed)
+                        events.Write("lost_dip", ("accepted", false), ("trace", TraceTail(cfg.LostDipGuardFrames)));
+                    if (ev == "dip")
+                    {
+                        // ウキを見失っただけの沈み(早引きの原因になりうる)は、直前の見え方を後から調べられるよう残す
+                        if (b is null) events.Write("lost_dip", ("accepted", true), ("trace", TraceTail(cfg.LostDipGuardFrames)));
+                        pecks++;
+                        Log.Info($"沈み検出 #{pecks} (y={(b is null ? "lost" : b.Y.ToString())})");
+                        if (pecks >= tuner.PecksToReel) DoReel(now, f, $"沈み{pecks}回目で引く");
+                    }
+                    else if (now - tArmed > (castVerified ? tuner.BiteTimeout() : unverifiedWait)) NoBite(now, f);
+                    break;
                 }
-                else if (now - tArmed > (castVerified ? tuner.BiteTimeout() : unverifiedWait)) NoBite(now, f);
-                break;
-            }
             case FishState.ResultWait:
                 if (attempt is null) SetState(FishState.Cooldown, "result_lost");      // 確定処理中の例外で試行が外れた
                 else FinishResult(now, f);

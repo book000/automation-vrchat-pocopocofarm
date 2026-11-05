@@ -57,8 +57,14 @@ public static class Triage
                 var pts = TracePoints(e).ToList();
                 return new Dictionary<string, object?>
                 {
-                    ["attempt"] = e.Num("attempt"), ["ts"] = e.Str("ts"), ["note"] = e.Str("note"), ["ocr"] = e.Str("ocr"), ["engine"] = e.Str("engine"),
-                    ["evidence"] = e.Str("evidence"), ["evidence_click"] = e.Str("evidence_click"), ["pecks_seen"] = e.Num("pecks_seen"),
+                    ["attempt"] = e.Num("attempt"),
+                    ["ts"] = e.Str("ts"),
+                    ["note"] = e.Str("note"),
+                    ["ocr"] = e.Str("ocr"),
+                    ["engine"] = e.Str("engine"),
+                    ["evidence"] = e.Str("evidence"),
+                    ["evidence_click"] = e.Str("evidence_click"),
+                    ["pecks_seen"] = e.Num("pecks_seen"),
                     ["trace"] = pts.Select(p => new[] { p.T, p.Y, p.W }).ToList(),
                     ["trace_range_px"] = pts.Count > 0 ? Math.Round(pts.Where(p => p.Y > 0).Select(p => p.Y).DefaultIfEmpty(0).Max() - pts.Where(p => p.Y > 0).Select(p => p.Y).DefaultIfEmpty(0).Min(), 1) : null,
                 };
@@ -76,8 +82,12 @@ public static class Triage
             }
             return new Dictionary<string, object?>
             {
-                ["outcome"] = g.Key, ["n"] = g.Count(), ["share"] = Math.Round(g.Count() * 100.0 / fails.Count, 1),
-                ["advice"] = Advice.GetValueOrDefault(g.Key) ?? [], ["hints"] = hints, ["examples"] = ex,
+                ["outcome"] = g.Key,
+                ["n"] = g.Count(),
+                ["share"] = Math.Round(g.Count() * 100.0 / fails.Count, 1),
+                ["advice"] = Advice.GetValueOrDefault(g.Key) ?? [],
+                ["hints"] = hints,
+                ["examples"] = ex,
             };
         }).ToList();
         return new() { ["total"] = fails.Count, ["groups"] = groups, ["source"] = Source, ["note"] = "対処は目安です。何も自動では変更しません" };

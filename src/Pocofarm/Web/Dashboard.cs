@@ -109,7 +109,10 @@ public sealed partial class Dashboard(Paths paths, Config cfg) : IFishingControl
                 var by = g.Where(e => e.Str("outcome") != "caught").GroupBy(e => e.Str("outcome")).ToDictionary(x => x.Key, x => x.Count());
                 return new Dictionary<string, object?>
                 {
-                    ["t"] = g.Key * 600, ["caught"] = g.Count(e => e.Str("outcome") == "caught"), ["fail"] = by.Values.Sum(), ["by"] = by,
+                    ["t"] = g.Key * 600,
+                    ["caught"] = g.Count(e => e.Str("outcome") == "caught"),
+                    ["fail"] = by.Values.Sum(),
+                    ["by"] = by,
                 };
             }).ToList();
 
@@ -119,7 +122,9 @@ public sealed partial class Dashboard(Paths paths, Config cfg) : IFishingControl
             .GroupBy(e => (long)Math.Floor(Tm(e) / 3600)).OrderBy(g => g.Key)
             .Select(g => new Dictionary<string, object?>
             {
-                ["t"] = g.Key * 3600, ["caught"] = g.Count(e => e.Str("outcome") == "caught"), ["total"] = g.Count(),
+                ["t"] = g.Key * 3600,
+                ["caught"] = g.Count(e => e.Str("outcome") == "caught"),
+                ["total"] = g.Count(),
             }).ToList();
 
     static readonly Regex ArchiveNameRe = new(@"^events_\d{8}_\d{6}\.jsonl$");
@@ -150,9 +155,14 @@ public sealed partial class Dashboard(Paths paths, Config cfg) : IFishingControl
             var sum = EventLog.Summarize(attempts);
             list.Add(new()
             {
-                ["name"] = name, ["bytes"] = new FileInfo(f).Length,
-                ["start"] = rows.Count > 0 ? rows.Min(Tm) : null, ["end"] = rows.Count > 0 ? rows.Max(Tm) : null,
-                ["attempts"] = sum["attempts"], ["caught"] = sum["caught"], ["success_rate"] = sum["success_rate"], ["exp"] = sum["exp"],
+                ["name"] = name,
+                ["bytes"] = new FileInfo(f).Length,
+                ["start"] = rows.Count > 0 ? rows.Min(Tm) : null,
+                ["end"] = rows.Count > 0 ? rows.Max(Tm) : null,
+                ["attempts"] = sum["attempts"],
+                ["caught"] = sum["caught"],
+                ["success_rate"] = sum["success_rate"],
+                ["exp"] = sum["exp"],
             });
         }
         return list;
@@ -169,10 +179,13 @@ public sealed partial class Dashboard(Paths paths, Config cfg) : IFishingControl
         var huds = rows.Where(e => e.Str("type") == "hud" && e.Num("level") is not null).ToList();
         return new()
         {
-            ["name"] = name, ["start"] = start, ["end"] = end,
+            ["name"] = name,
+            ["start"] = start,
+            ["end"] = end,
             ["total"] = EventLog.Summarize(attempts),
             ["stats"] = Stats.Compute(attempts, end, cfg.FishCoins, []),
-            ["chart"] = ChartOf(attempts), ["hourly"] = HourlyOf(attempts),
+            ["chart"] = ChartOf(attempts),
+            ["hourly"] = HourlyOf(attempts),
             ["failures"] = attempts.Where(e => e.Str("outcome") != "caught").TakeLast(100).Reverse().Select(e => Without(e, "_t", "trace")).ToList(),
             ["level"] = huds.Count > 0 ? new Dictionary<string, object?> { ["from"] = huds[0].Num("level"), ["to"] = huds[^1].Num("level") } : null,
             ["neko"] = rows.Where(e => e.Str("type") == "neko").TakeLast(40).Reverse().Select(e => Without(e, "_t")).ToList(),
@@ -227,8 +240,11 @@ public sealed partial class Dashboard(Paths paths, Config cfg) : IFishingControl
         double win = Math.Clamp(now - sessionStart, 60, 3600);
         var pace = new Dictionary<string, object?>
         {
-            ["per_hour"] = Math.Round(caughtAt.Count(t => t >= now - win) / win * 3600), ["per_hour_window"] = Math.Round(win),
-            ["per5_5m"] = Per5(300), ["per5_30m"] = Per5(1800), ["per5_60m"] = Per5(3600),
+            ["per_hour"] = Math.Round(caughtAt.Count(t => t >= now - win) / win * 3600),
+            ["per_hour_window"] = Math.Round(win),
+            ["per5_5m"] = Per5(300),
+            ["per5_30m"] = Per5(1800),
+            ["per5_60m"] = Per5(3600),
             ["last_catch_age"] = caughtAt.Count > 0 ? Math.Round(now - caughtAt[^1], 1) : null,
             ["slow_30m"] = events.Count(e => e.Str("type") == "slow_cycle" && T(e) >= now - 1800),
             ["restarts"] = events.Where(e => e.Str("type") == "session_start" && T(e) >= now - 24 * 3600).Reverse().Select(T).ToList(),
@@ -238,12 +254,24 @@ public sealed partial class Dashboard(Paths paths, Config cfg) : IFishingControl
         var health = HealthOf(attempts, status);
         return new()
         {
-            ["markers"] = MarkersOf(events, now), ["health"] = health, ["farm"] = FarmOf(events),
-            ["now"] = now, ["alive"] = alive, ["status"] = status,
-            ["total"] = EventLog.Summarize(attempts), ["hour"] = EventLog.Summarize(hour), ["session"] = EventLog.Summarize(session),
-            ["recent"] = recent, ["chart"] = chart, ["hourly"] = hourly,
-            ["stats"] = Stats.Compute(attempts, now, cfg.FishCoins, ArchivedCatches()), ["hud"] = hud,
-            ["pace"] = pace, ["other_events"] = others, ["neko"] = nekoNotes, ["neko_ack"] = nekoAck,
+            ["markers"] = MarkersOf(events, now),
+            ["health"] = health,
+            ["farm"] = FarmOf(events),
+            ["now"] = now,
+            ["alive"] = alive,
+            ["status"] = status,
+            ["total"] = EventLog.Summarize(attempts),
+            ["hour"] = EventLog.Summarize(hour),
+            ["session"] = EventLog.Summarize(session),
+            ["recent"] = recent,
+            ["chart"] = chart,
+            ["hourly"] = hourly,
+            ["stats"] = Stats.Compute(attempts, now, cfg.FishCoins, ArchivedCatches()),
+            ["hud"] = hud,
+            ["pace"] = pace,
+            ["other_events"] = others,
+            ["neko"] = nekoNotes,
+            ["neko_ack"] = nekoAck,
             ["neko_unread"] = events.Count(e => e.Str("type") == "neko" && T(e) > nekoAck),
             ["log"] = Tail(paths.Log, 70),
             ["outcomes"] = EventLog.Outcomes,

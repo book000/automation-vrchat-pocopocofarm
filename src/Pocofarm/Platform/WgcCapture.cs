@@ -162,8 +162,14 @@ public sealed unsafe class WgcCapture : IDisposable
             staging?.Dispose();
             staging = device!.CreateTexture2D(new Texture2DDescription
             {
-                Width = desc.Width, Height = desc.Height, MipLevels = 1, ArraySize = 1, Format = Format.B8G8R8A8_UNorm,
-                SampleDescription = new SampleDescription(1, 0), Usage = ResourceUsage.Staging, CPUAccessFlags = CpuAccessFlags.Read,
+                Width = desc.Width,
+                Height = desc.Height,
+                MipLevels = 1,
+                ArraySize = 1,
+                Format = Format.B8G8R8A8_UNorm,
+                SampleDescription = new SampleDescription(1, 0),
+                Usage = ResourceUsage.Staging,
+                CPUAccessFlags = CpuAccessFlags.Read,
             });
         }
         context!.CopyResource(staging, tex);

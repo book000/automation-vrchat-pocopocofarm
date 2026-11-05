@@ -46,7 +46,8 @@ public sealed partial class Dashboard
         return new()
         {
             ["alerts"] = alerts.Select(a => new Dictionary<string, object?> { ["kind"] = a.Kind, ["plot"] = a.Plot, ["message"] = a.Message }).ToList(),
-            ["timeline"] = FarmWatch.Timeline(snaps), ["last_t"] = snaps.Count > 0 ? snaps[^1].T : null,
+            ["timeline"] = FarmWatch.Timeline(snaps),
+            ["last_t"] = snaps.Count > 0 ? snaps[^1].T : null,
             ["note"] = "「完了」は全マス植え済み・水やり済みの意味で、作物が実ったかは判定していません",
         };
     }

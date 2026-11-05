@@ -64,7 +64,7 @@ public class StatsOpsTests
         Assert.Equal(1.0, lv["gained"]);
         var dt = (Dictionary<string, object?>)s["downtime"]!;
         Assert.Equal(1800, dt["paused_s"]);
-        Assert.Equal(3, dt["capture_gap_s"]);       
+        Assert.Equal(3, dt["capture_gap_s"]);
         Assert.Equal(1, dt["restarts"]);
         Assert.True((int)dt["offline_s"]! > 3600);
         var farm = (Dictionary<string, object?>)s["farm"]!;

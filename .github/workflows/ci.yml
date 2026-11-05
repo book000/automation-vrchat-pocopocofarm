@@ -87,20 +87,13 @@ jobs:
           retention-days: 7
 
   format:
-    name: Format check (changed files only)
-    # 既存コードに整形の負債(主に桁揃えの空白)が残っているため、PR で変更した .cs だけを検査し、
-    # 失敗してもマージはブロックしない。負債が解消したら continue-on-error を外し全体検査へ移す
-    if: ${{ github.event_name == 'pull_request' }}
+    name: Format check
     runs-on: windows-latest
     timeout-minutes: 15
-    continue-on-error: true
 
     steps:
       - name: 🛎 Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          ref: ${{ github.event.pull_request.head.sha }}
-          fetch-depth: 0
 
       - name: 🏗 Setup .NET
         uses: actions/setup-dotnet@0f4a354dd5547a28c70b7853dbd95d5b67886e73 # v6.1.0
@@ -113,10 +106,4 @@ jobs:
         run: dotnet restore --locked-mode
 
       - name: 🎨 dotnet format --verify-no-changes
-        shell: pwsh
-        env:
-          BASE_SHA: ${{ github.event.pull_request.base.sha }}
-        run: |
-          $files = git diff --name-only --diff-filter=d "$env:BASE_SHA...HEAD" -- '*.cs'
-          if (-not $files) { "No C# files changed." >> $env:GITHUB_STEP_SUMMARY; exit 0 }
-          dotnet format Pocofarm.slnx --verify-no-changes --no-restore --include $files
+        run: dotnet format Pocofarm.slnx --verify-no-changes --no-restore

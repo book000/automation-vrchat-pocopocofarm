@@ -12,8 +12,13 @@ public sealed class EventLog
 
     public static readonly Dictionary<string, string> OutcomeJa = new()
     {
-        ["caught"] = "釣果", ["early"] = "早すぎ", ["escaped"] = "逃げられた", ["unknown"] = "結果不明",
-        ["no_bite_reset"] = "当たりなし引き直し", ["cast_failed"] = "投げ失敗", ["missed_bite"] = "当たり見逃し",
+        ["caught"] = "釣果",
+        ["early"] = "早すぎ",
+        ["escaped"] = "逃げられた",
+        ["unknown"] = "結果不明",
+        ["no_bite_reset"] = "当たりなし引き直し",
+        ["cast_failed"] = "投げ失敗",
+        ["missed_bite"] = "当たり見逃し",
     };
 
     static readonly JsonSerializerOptions Opt = new() { Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping };

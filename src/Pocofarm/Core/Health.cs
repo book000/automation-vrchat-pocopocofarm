@@ -10,7 +10,9 @@ public sealed record HealthReport(string Level, List<HealthCause> Causes, int Re
 {
     public Dictionary<string, object?> ToJson() => new()
     {
-        ["level"] = Level, ["recent"] = Recent, ["baseline"] = Baseline,
+        ["level"] = Level,
+        ["recent"] = Recent,
+        ["baseline"] = Baseline,
         ["causes"] = Causes.Select(c => new Dictionary<string, object?> { ["key"] = c.Key, ["message"] = c.Message, ["recent"] = c.Recent, ["baseline"] = c.Baseline }).ToList(),
     };
 }
