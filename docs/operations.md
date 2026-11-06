@@ -10,7 +10,7 @@ How to run the tool unattended, update it, expose the dashboard, and watch it.
 .\pocofarm.exe all --root .
 ```
 
-`scripts/start.bat` starts the published executable minimized, using the repository root as `--root`. To start the tool at logon, run the executable (or a shortcut to `start.bat`) from the Windows Startup folder or a Task Scheduler task that runs at logon in the interactive session. The tool needs a desktop session because it captures a window and shows notifications.
+`scripts/start.bat` starts the executable minimized, using the repository root as `--root`. It prefers `csharp\dist\pocofarm.exe` (the folder the auto-update swaps in) and falls back to `artifacts\publish\pocofarm.exe`. To start the tool at logon, run the executable (or a shortcut to `start.bat`) from the Windows Startup folder or a Task Scheduler task that runs at logon in the interactive session. The tool needs a desktop session because it captures a window and shows notifications.
 
 The root directory (`--root`, default: the current directory) holds `config.json` and `data/`. It does not have to be next to the executable.
 
