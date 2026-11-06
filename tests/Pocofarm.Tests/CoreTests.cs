@@ -225,7 +225,7 @@ public class CoreTests
         Assert.InRange(Hud.XpFraction(img, roi)!.Value, 0.471 - 0.02, 0.471 + 0.02);
         var blank = new Frame(1000, 1000);
         blank.Fill(0, 0, 1000, 1000, 60, 60, 60);
-        Assert.Equal(0.0, Hud.XpFraction(blank, roi));
+        Assert.Null(Hud.XpFraction(blank, roi));
     }
 
     static JsonObject E(double now, double ago, string outcome, Action<JsonObject>? extra = null)

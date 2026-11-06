@@ -19,7 +19,7 @@ public static partial class Hud
         return m.Success ? Toast.ParseInt(m.Groups[1].Value) : null;
     }
 
-    /// <summary>経験値バーの黄色い部分の長さを 0..1 で返す。範囲が空なら null。</summary>
+    /// <summary>経験値バーの黄色い部分の長さを 0..1 で返す。黄色が 1 本も見つからない(バーを読めていない)ときと、範囲が空のときは null。</summary>
     public static double? XpFraction(Frame frame, double[] roi)
     {
         var band = frame.CropRatio(roi[0], roi[1], roi[2], roi[3]);
@@ -36,7 +36,7 @@ public static partial class Hud
             }
             if (yellow / (double)band.Height > 0.5) last = x;
         }
-        if (last < 0) return 0.0;
+        if (last < 0) return null;      // 0% と区別する。読めていない偽の 0 を記録すると推移が落ちて見込みも狂う
         double raw = (last + 1.0) / band.Width;
         return Math.Round(Math.Min(1.0, Math.Max(0.0, (raw - XpCap) / (1 - XpCap))), 3);
     }

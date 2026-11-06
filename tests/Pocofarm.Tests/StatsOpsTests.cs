@@ -161,6 +161,23 @@ public class StatsOpsTests
     }
 
     [Fact]
+    public void Progress_IgnoresHudReadingsWithoutXpBar()
+    {
+        // 経験値バーを読めなかった記録(xp なし)を 0% と数えると、現在値が実際より低く出る
+        var evs = new List<JsonObject>
+        {
+            Ev(At(0), "hud", o => { o["level"] = 10; o["xp"] = 0.4; }),
+            Ev(At(1), "hud", o => { o["level"] = 10; o["xp"] = null; }),
+            Ev(At(2), "hud", o => { o["level"] = 11; o["xp"] = null; }),
+            Ev(At(3), "hud", o => { o["level"] = 11; o["xp"] = 0.1; }),
+        };
+        var p = Stats.Progress(evs, At(3.5));
+        var level = (Dictionary<string, object?>)p["level"]!;
+        Assert.Equal(11, level["level"]);
+        Assert.Equal(10.0, level["xp"]);
+    }
+
+    [Fact]
     public void Progress_DailyTrendHasSevenDays()
     {
         var p = Stats.Progress([Attempt(At(1), "caught", "フナ", 5)], At(2));

@@ -238,7 +238,7 @@ public sealed partial class Dashboard(Paths paths, Config cfg) : IFishingControl
         var hud = new Dictionary<string, object?>
         {
             ["goal"] = cfg.LevelGoal,
-            ["points"] = huds.TakeLast(600).Select(e => new Dictionary<string, object?> { ["t"] = T(e), ["v"] = Math.Round(e.Num("level")!.Value + (e.Num("xp") ?? 0), 3) }).ToList(),
+            ["points"] = huds.Where(e => e.Num("xp") is not null).TakeLast(600).Select(e => new Dictionary<string, object?> { ["t"] = T(e), ["v"] = Math.Round(e.Num("level")!.Value + e.Num("xp")!.Value, 3) }).ToList(),
             ["ups"] = huds.Zip(huds.Skip(1)).Where(p => p.Second.Num("level")! > p.First.Num("level")!)
                 .Select(p => new Dictionary<string, object?> { ["t"] = T(p.Second), ["level"] = p.Second.Num("level") }).TakeLast(10).ToList(),
             ["now"] = status["hud"]?.DeepClone(),

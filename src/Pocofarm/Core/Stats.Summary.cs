@@ -133,10 +133,10 @@ public static partial class Stats
 
         // 読み違いで下がった値は捨てる(単調増加に直す)
         var pts = new List<(double T, double V, int Lv)>();
-        foreach (var e in evs.Where(e => e.Str("type") == "hud" && e.Num("level") is not null).OrderBy(Tm))
+        foreach (var e in evs.Where(e => e.Str("type") == "hud" && e.Num("level") is not null && e.Num("xp") is not null).OrderBy(Tm))
         {
             int lv = (int)e.Num("level")!.Value;
-            double v = lv + Math.Clamp(e.Num("xp") ?? 0, 0, 0.999);
+            double v = lv + Math.Clamp(e.Num("xp")!.Value, 0, 0.999);
             if (pts.Count > 0 && (v < pts[^1].V - 0.001 || lv > pts[^1].Lv + 1)) continue;
             pts.Add((Tm(e), v, lv));
         }
