@@ -32,7 +32,7 @@ public static class Supervisor
             p.ErrorDataReceived += (_, e) =>
             {
                 if (e.Data is null) return;
-                Console.Error.WriteLine(e.Data);
+                Log.Echo(e.Data);
                 Log.Append(paths.CrashLog, $"{DateTime.Now:yyyy-MM-dd HH:mm:ss} {e.Data}{Environment.NewLine}");
             };
             p.BeginErrorReadLine();

@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using System.Globalization;
 
 namespace Pocofarm.Core;
@@ -8,6 +9,22 @@ public static class Log
     static readonly object Gate = new();
     static string? path;
     static bool console = true;
+
+    /// <summary>コンソール出力待ちの行。コンソールが出力停止(Pause キーなど)になると Console.WriteLine は戻らないので、ログを出す側が巻き込まれて固まらないよう専用スレッドに回し、詰まったら捨てる。</summary>
+    static readonly BlockingCollection<string> consoleQueue = new(2000);
+    static readonly Lazy<Thread> consolePump = new(() =>
+    {
+        var t = new Thread(() => { foreach (var l in consoleQueue.GetConsumingEnumerable()) Console.WriteLine(l); }) { IsBackground = true, Name = "log-console" };
+        t.Start();
+        return t;
+    });
+
+    /// <summary>コンソールへ 1 行出す。詰まっていても呼び出し側は待たない(溜まりすぎたら捨てる)。</summary>
+    public static void Echo(string line)
+    {
+        _ = consolePump.Value;
+        consoleQueue.TryAdd(line);
+    }
 
     /// <summary>出力先を設定する。</summary>
     public static void Setup(string logPath, bool toConsole = true)
@@ -28,12 +45,9 @@ public static class Log
     static void Write(string level, string msg)
     {
         var line = $"{DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss", CultureInfo.InvariantCulture)} {level} {msg}";
-        lock (Gate)
-        {
-            if (console) Console.WriteLine(line);
-            if (path is null) return;
-            Append(path, line + "\n");
-        }
+        if (console) Echo(line);
+        if (path is null) return;
+        Append(path, line + "\n");
     }
 
     /// <summary>ファイルへ追記する。5MB を超えていたら 5 世代で回す。失敗しても呼び出し側を止めない。crash.log など fishing.log 以外にも使う。</summary>
